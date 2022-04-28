@@ -990,6 +990,9 @@
     "name": "hasValidLength"
   },
   {
+    "name": "hasValidSize"
+  },
+  {
     "name": "hasValidator"
   },
   {
