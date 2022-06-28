@@ -393,9 +393,6 @@
     "name": "NAVIGATION_CANCELING_ERROR"
   },
   {
-    "name": "NEW_LINE"
-  },
-  {
     "name": "NG_COMP_DEF"
   },
   {
@@ -429,7 +426,16 @@
     "name": "NG_PROV_DEF"
   },
   {
+    "name": "NG_RUNTIME_ERROR_CODE"
+  },
+  {
+    "name": "NG_RUNTIME_ERROR_MESSAGE"
+  },
+  {
     "name": "NG_TEMPLATE_SELECTOR"
+  },
+  {
+    "name": "NG_TOKEN_PATH"
   },
   {
     "name": "NONE"
@@ -1102,6 +1108,9 @@
   },
   {
     "name": "createRoot"
+  },
+  {
+    "name": "createRuntimeError"
   },
   {
     "name": "createSegmentGroupFromRoute"
@@ -2007,7 +2016,7 @@
     "name": "stringify"
   },
   {
-    "name": "stringify11"
+    "name": "stringify12"
   },
   {
     "name": "stringifyCSSSelector"
