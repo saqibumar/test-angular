@@ -2640,6 +2640,203 @@ import {NgModelCustomComp, NgModelCustomWrapper} from './value_accessor_integrat
            expect(() => fixture.detectChanges()).not.toThrowError();
          }));
     });
+
+    describe('duplicate name warn', () => {
+      beforeEach(function() {
+        spyOn(console, 'warn');
+      });
+
+      it('should warn when adding a duplicate name that is not a radio button', fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <input ngModel name="first" />
+                <input ngModel name="first" />
+              </form>
+            `
+           })
+           class App {
+             first: string = '';
+           }
+
+           const fixture = initTest(App);
+           fixture.detectChanges();
+           tick();
+           expect(console.warn)
+               .toHaveBeenCalledWith(
+                   `The "first" name is used for multiple \`ngModel\` bindings in this form. ` +
+                   `This could lead to stale values in these bindings. ` +
+                   `Make sure that elements with \`ngModel\` bindings in this form group ` +
+                   `have unique "name" attribute values.`);
+         }));
+
+      it('should not warn when adding a case insensitve duplicate name that is not a radio button',
+         fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <input ngModel name="first" />
+                <input ngModel name="First" />
+              </form>
+            `
+           })
+           class App {
+             first: string = '';
+           }
+
+           const fixture = initTest(App);
+           fixture.detectChanges();
+           tick();
+           expect(console.warn).not.toHaveBeenCalled();
+         }));
+
+      it('should warn if duplicate is standalone', fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <input ngModel name="withstandalone" />
+                <input ngModel name="withstandalone" ngModelOptions="{standalone: true}" />
+              </form>
+            `
+           })
+           class App {
+             first: string = '';
+           }
+
+           const fixture = initTest(App);
+           fixture.detectChanges();
+           tick();
+           expect(console.warn)
+               .toHaveBeenCalledWith(
+                   `The "withstandalone" name is used for multiple \`ngModel\` bindings in this form. ` +
+                   `This could lead to stale values in these bindings. ` +
+                   `Make sure that elements with \`ngModel\` bindings in this form group ` +
+                   `have unique "name" attribute values.`);
+         }));
+
+      it('should warn if one of the duplicates is radio but the other is now', fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <input ngModel name="first" type="radio" />
+                <input ngModel name="first" type="text" />
+              </form>
+            `
+           })
+           class App {
+             first: string = '';
+           }
+
+           const fixture = initTest(App);
+           fixture.detectChanges();
+           tick();
+           expect(console.warn)
+               .toHaveBeenCalledWith(
+                   `The "first" name is used for multiple \`ngModel\` bindings in this form. ` +
+                   `This could lead to stale values in these bindings. ` +
+                   `Make sure that elements with \`ngModel\` bindings in this form group ` +
+                   `have unique "name" attribute values.`);
+         }));
+
+      it('should not warn when adding a duplicate name that is a radio button', fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <input ngModel name="first" type="radio" />
+                <input ngModel name="first" type="radio" />
+              </form>
+            `
+           })
+           class App {
+             first: string = '';
+           }
+
+           const fixture = initTest(App);
+           fixture.detectChanges();
+           tick();
+           expect(console.warn).not.toHaveBeenCalled();
+         }));
+
+      it('should not warn when rebinding a list in an ngFor', fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <ng-container ngModelGroup="group">
+                  <div *ngFor="let item of items; index as i">
+                    <input [(ngModel)]="item.value" name="name-{{i}}">
+                  </div>
+                </ng-container>
+              </form>
+            `
+           })
+           class App {
+             private _counter = 0;
+             group = {};
+             items: {value: string}[] = [];
+
+             add(amount: number) {
+               for (let i = 0; i < amount; i++) {
+                 this.items.push({value: `${this._counter++}`});
+               }
+             }
+
+             remove(index: number) {
+               this.items.splice(index, 1);
+             }
+           }
+
+           const getValues = () =>
+               fixture.debugElement.queryAll(By.css('input')).map(el => el.nativeElement.value);
+           const fixture = initTest(App);
+           fixture.componentInstance.add(3);
+           fixture.detectChanges();
+           tick();
+           expect(getValues()).toEqual(['0', '1', '2']);
+
+           fixture.componentInstance.remove(1);
+           fixture.detectChanges();
+           tick();
+           expect(console.warn).not.toHaveBeenCalled();
+           expect(getValues()).toEqual(['0', '2']);
+         }));
+
+      it('should warn when adding new control', fakeAsync(() => {
+           @Component({
+             template: `
+              <form>
+                <ng-container ngModelGroup="group">
+                  <div *ngFor="let item of items; index as i">
+                    <input [(ngModel)]="item.value" name="name-{{item.name}}">
+                  </div>
+                </ng-container>
+              </form>
+            `
+           })
+           class App {
+             private _counter = 0;
+             items: {value: string, name: string}[] = [];
+
+             add() {
+               this.items.push({value: `${this._counter++}`, name: `item`});
+             }
+           }
+
+           const fixture = initTest(App);
+           fixture.componentInstance.add();
+           fixture.detectChanges();
+           tick();
+
+           fixture.componentInstance.add();
+           fixture.detectChanges();
+           tick();
+           expect(console.warn)
+               .toHaveBeenCalledWith(
+                   `The "name-item" name is used for multiple \`ngModel\` bindings in this form. ` +
+                   `This could lead to stale values in these bindings. ` +
+                   `Make sure that elements with \`ngModel\` bindings in this form group ` +
+                   `have unique "name" attribute values.`);
+         }));
+    });
   });
 }
 

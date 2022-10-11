@@ -106,7 +106,8 @@ export class NgForm extends ControlContainer implements Form, AfterViewInit {
    */
   public readonly submitted: boolean = false;
 
-  private _directives = new Set<NgModel>();
+  /** @internal */
+  _directives = new Set<NgModel>();
 
   /**
    * @description

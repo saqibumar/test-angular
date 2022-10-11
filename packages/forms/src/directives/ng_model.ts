@@ -6,7 +6,8 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {ChangeDetectorRef, Directive, EventEmitter, forwardRef, Host, Inject, Input, OnChanges, OnDestroy, Optional, Output, Self, SimpleChanges, ɵcoerceToBoolean as coerceToBoolean} from '@angular/core';
+import {ChangeDetectorRef, Directive, EventEmitter, forwardRef, Host, Inject, Input, NgZone, OnChanges, OnDestroy, Optional, Output, Self, SimpleChanges, ɵcoerceToBoolean as coerceToBoolean} from '@angular/core';
+import {Subscription} from 'rxjs';
 
 import {FormHooks} from '../model/abstract_model';
 import {FormControl} from '../model/form_control';
@@ -18,6 +19,7 @@ import {ControlValueAccessor, NG_VALUE_ACCESSOR} from './control_value_accessor'
 import {NgControl} from './ng_control';
 import {NgForm} from './ng_form';
 import {NgModelGroup} from './ng_model_group';
+import {RadioControlValueAccessor} from './radio_control_value_accessor';
 import {controlPath, isPropertyUpdated, selectValueAccessor, setUpControl} from './shared';
 import {formGroupNameException, missingNameException, modelParentException} from './template_driven_errors';
 import {AsyncValidator, AsyncValidatorFn, Validator, ValidatorFn} from './validators';
@@ -158,6 +160,12 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
   viewModel: any;
 
   /**
+   * A subscription to the duplicate name check. Allow null as initial value.
+   * @nodoc
+   */
+  private dupeNameSubscription: Subscription|null = null;
+
+  /**
    * @description
    * Tracks the name bound to the directive. If a parent form exists, it
    * uses this name as a key to retrieve this control's value.
@@ -205,7 +213,7 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
   @Output('ngModelChange') update = new EventEmitter();
 
   constructor(
-      @Optional() @Host() parent: ControlContainer,
+      private _ngZone: NgZone, @Optional() @Host() parent: ControlContainer,
       @Optional() @Self() @Inject(NG_VALIDATORS) validators: (Validator|ValidatorFn)[],
       @Optional() @Self() @Inject(NG_ASYNC_VALIDATORS) asyncValidators:
           (AsyncValidator|AsyncValidatorFn)[],
@@ -233,6 +241,9 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
           this.formDirective.removeControl({name: oldName, path: this._getPath(oldName)});
         }
       }
+      if (ngDevMode) {
+        this._checkDuplicateModels(changes);
+      }
       this._setUpControl();
     }
     if ('isDisabled' in changes) {
@@ -248,6 +259,7 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
   /** @nodoc */
   ngOnDestroy(): void {
     this.formDirective && this.formDirective.removeControl(this);
+    this.dupeNameSubscription?.unsubscribe();
   }
 
   /**
@@ -304,6 +316,40 @@ export class NgModel extends NgControl implements OnChanges, OnDestroy {
       this._checkParentType();
     }
     this._checkName();
+  }
+
+  private _checkDuplicateModels(changes: SimpleChanges): void {
+    if (this.formDirective) {
+      if (this.dupeNameSubscription !== null) {
+        this.dupeNameSubscription.unsubscribe();
+      }
+
+      /**
+       * Given ngFor can produce duplicates *for a short time* we need to skip
+       * the validation when changes contain a previous value on the name, since the duplicate
+       * will be deleted.
+       */
+      if (changes['name']?.isFirstChange()) {
+        this.dupeNameSubscription = this._ngZone.onStable.subscribe(() => {
+          this.formDirective._directives?.forEach((directive: NgModel) => {
+            /*
+             * Radio inputs need to be excluded from the dupelicate name check, since
+             * radio buttons require identical names in order to properly function. However,
+             * if a non radio input shares the name then it will be counted as a duplicate.
+             */
+            if ((!(directive.valueAccessor instanceof RadioControlValueAccessor) ||
+                 !(this.valueAccessor instanceof RadioControlValueAccessor)) &&
+                directive !== this && directive.name === this.name)
+              console.warn(
+                  `The "${
+                      this.name}" name is used for multiple \`ngModel\` bindings in this form. ` +
+                  `This could lead to stale values in these bindings. ` +
+                  `Make sure that elements with \`ngModel\` bindings in this form group ` +
+                  `have unique "name" attribute values.`);
+          });
+        });
+      }
+    }
   }
 
   private _checkParentType(): void {
