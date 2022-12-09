@@ -50,14 +50,14 @@ export function getCanActivateChild(p: ActivatedRouteSnapshot):
 export function getTokenOrFunctionIdentity<T>(
     tokenOrFunction: Function|ProviderToken<T>, injector: Injector): Function|T {
   const NOT_FOUND = Symbol();
-  const result = injector.get<T|Symbol>(tokenOrFunction, NOT_FOUND);
+  const result = injector.get<T|Symbol>(tokenOrFunction as ProviderToken<T>, NOT_FOUND);
   if (result === NOT_FOUND) {
     if (typeof tokenOrFunction === 'function' && !isInjectable(tokenOrFunction)) {
       // We think the token is just a function so return it as-is
       return tokenOrFunction;
     } else {
       // This will throw the not found error
-      return injector.get<T>(tokenOrFunction);
+      return injector.get(tokenOrFunction as ProviderToken<T>);
     }
   }
   return result as T;
