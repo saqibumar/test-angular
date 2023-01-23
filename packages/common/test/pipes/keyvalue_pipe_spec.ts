@@ -92,6 +92,28 @@ describe('KeyValuePipe', () => {
       const pipe = new KeyValuePipe(defaultKeyValueDiffers);
       expect(pipe.transform(value)).toEqual(null);
     });
+
+    it('should accept an object with optional keys', () => {
+      interface MyInterface {
+        one: string;
+        two: number;
+        three: string;
+        four: string;
+      }
+      const myData: Partial<MyInterface> = {
+        one: 'One',
+        two: 2,
+        three: undefined,
+      };
+
+      const pipe = new KeyValuePipe(defaultKeyValueDiffers);
+      expect(pipe.transform(myData)?.length).toEqual(3);
+
+      const differ = (a: string | number | undefined, b: string | number | undefined): number => {
+        return 1;
+      };
+      expect(pipe.transform(myData, differ)?.length).toEqual(3);
+    });
   });
 
   describe('Map', () => {
