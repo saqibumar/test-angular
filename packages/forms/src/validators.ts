@@ -19,7 +19,8 @@ const NG_DEV_MODE = typeof ngDevMode === 'undefined' || !!ngDevMode;
 function isEmptyInputValue(value: any): boolean {
   /**
    * Check if the object is a string or array before evaluating the length attribute.
-   * This avoids falsely rejecting objects that contain a custom length attribute.
+   * Check if the object is a set before evaluating the size attribute.
+   * This avoids falsely rejecting objects that contain a custom length or size attribute.
    * For example, the object {id: 1, length: 0, width: 0} should not be returned as empty.
    */
   return value == null ||
@@ -27,14 +28,22 @@ function isEmptyInputValue(value: any): boolean {
       value instanceof Set && value.size === 0;
 }
 
-function hasValidLength(value: any): boolean {
+/**
+ * Extract the length property in case it's an array.
+ * Extract the size property in case it's a set.
+ * Return null else.
+ * @param value Either an array set or undefined.
+ */
+function lengthOrSize(value: any): number|null {
   // non-strict comparison is intentional, to check for both `null` and `undefined` values
-  return value != null && typeof value.length === 'number';
-}
-
-function hasValidSize(value: any): boolean {
-  // non-strict comparison is intentional, to check for both `null` and `undefined` values
-  return value != null && (typeof value.size === 'number');
+  if (value == null) {
+    return null;
+  } else if (typeof value.length === 'number') {
+    return value.length;
+  } else if (typeof value.size === 'number') {
+    return value.size;
+  }
+  return null;
 }
 
 /**
@@ -511,17 +520,15 @@ export function emailValidator(control: AbstractControl): ValidationErrors|null 
  */
 export function minLengthValidator(minLength: number): ValidatorFn {
   return (control: AbstractControl): ValidationErrors|null => {
-    const _hasValidLength = hasValidLength(control.value);
-    if (isEmptyInputValue(control.value) || (!_hasValidLength && !hasValidSize(control.value))) {
+    const _length = lengthOrSize(control.value);
+    if (isEmptyInputValue(control.value) || !_length) {
       // don't validate empty values to allow optional controls
       // don't validate values without `length` or `size` property
       return null;
     }
 
-    const length = _hasValidLength ? control.value.length : control.value.size;
-
-    return length < minLength ?
-        {'minlength': {'requiredLength': minLength, 'actualLength': length}} :
+    return _length < minLength ?
+        {'minlength': {'requiredLength': minLength, 'actualLength': _length}} :
         null;
   };
 }
@@ -532,11 +539,9 @@ export function minLengthValidator(minLength: number): ValidatorFn {
  */
 export function maxLengthValidator(maxLength: number): ValidatorFn {
   return (control: AbstractControl): ValidationErrors|null => {
-    const length = hasValidLength(control.value) ? control.value.length :
-        hasValidSize(control.value)              ? control.value.size :
-                                                   null;
-    if (length !== null && length > maxLength) {
-      return {'maxlength': {'requiredLength': maxLength, 'actualLength': length}};
+    const _length = lengthOrSize(control.value);
+    if (_length !== null && _length > maxLength) {
+      return {'maxlength': {'requiredLength': maxLength, 'actualLength': _length}};
     }
     return null;
   };
