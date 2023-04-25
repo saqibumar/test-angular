@@ -4976,7 +4976,7 @@ describe('Integration', () => {
          }));
 
       it('can return UrlTree from CanMatchFn guard', fakeAsync(() => {
-           const canMatchTeamSection = new InjectionToken('CanMatchTeamSection');
+           const canMatchTeamSection = new InjectionToken<CanMatchFn>('CanMatchTeamSection');
            const canMatchFactory: (router: Router) => CanMatchFn = (router: Router) => () =>
                router.createUrlTree(['/team/1']);
 

@@ -110,7 +110,7 @@ function runCanActivate(
   if (!canActivate || canActivate.length === 0) return of(true);
 
   const canActivateObservables =
-      canActivate.map((canActivate: CanActivateFn|ProviderToken<unknown>) => {
+      canActivate.map((canActivate: CanActivateFn|ProviderToken<CanActivate>) => {
         return defer(() => {
           const closestInjector = getClosestRouteInjector(futureARS) ?? injector;
           const guard = getTokenOrFunctionIdentity<CanActivate>(canActivate, closestInjector);
@@ -136,7 +136,7 @@ function runCanActivateChild(
   const canActivateChildGuardsMapped = canActivateChildGuards.map((d: any) => {
     return defer(() => {
       const guardsMapped =
-          d.guards.map((canActivateChild: CanActivateChildFn|ProviderToken<unknown>) => {
+          d.guards.map((canActivateChild: CanActivateChildFn|ProviderToken<CanActivateChild>) => {
             const closestInjector = getClosestRouteInjector(d.node) ?? injector;
             const guard = getTokenOrFunctionIdentity<{canActivateChild: CanActivateChildFn}>(
                 canActivateChild, closestInjector);

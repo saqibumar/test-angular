@@ -599,10 +599,11 @@ export class TestBedImpl implements TestBed {
     }
 
     // TODO: Don't cast as `InjectionToken<boolean>`, proper type is boolean[]
-    const noNgZone = this.inject(ComponentFixtureNoNgZone as InjectionToken<boolean>, false);
+    const noNgZone =
+        this.inject(ComponentFixtureNoNgZone as unknown as InjectionToken<boolean>, false);
     // TODO: Don't cast as `InjectionToken<boolean>`, proper type is boolean[]
     const autoDetect: boolean =
-        this.inject(ComponentFixtureAutoDetect as InjectionToken<boolean>, false);
+        this.inject(ComponentFixtureAutoDetect as unknown as InjectionToken<boolean>, false);
     const ngZone: NgZone|null = noNgZone ? null : this.inject(NgZone, null);
     const componentFactory = new ComponentFactory(componentDef);
     const initComponent = () => {

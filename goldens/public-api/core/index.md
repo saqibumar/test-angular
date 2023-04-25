@@ -761,6 +761,7 @@ export enum InjectFlags {
 
 // @public
 export class InjectionToken<T> {
+    __brand__: T;
     constructor(_desc: string, options?: {
         providedIn?: Type<any> | 'root' | 'platform' | 'any' | null;
         factory: () => T;
