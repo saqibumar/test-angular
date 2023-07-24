@@ -13,6 +13,8 @@ export enum ExtendedTemplateDiagnosticName {
     // (undocumented)
     MISSING_NGFOROF_LET = "missingNgForOfLet",
     // (undocumented)
+    NEGATED_ASYNC_PIPE = "negatedAsyncPipe",
+    // (undocumented)
     NULLISH_COALESCING_NOT_NULLABLE = "nullishCoalescingNotNullable",
     // (undocumented)
     OPTIONAL_CHAIN_NOT_NULLABLE = "optionalChainNotNullable",

@@ -351,6 +351,13 @@ export enum ErrorCode {
   SKIP_HYDRATION_NOT_STATIC = 8108,
 
   /**
+   * Negating an async pipe in an *ngIf thrashes the layout because the pipe
+   * emits null immediately before checking the condition.
+   *
+   */
+  NEGATED_ASYNC_PIPE = 8109,
+
+  /**
    * The template type-checking engine would need to generate an inline type check block for a
    * component, but the current type-checking environment doesn't support it.
    */
