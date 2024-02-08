@@ -149,8 +149,8 @@ runInEachFileSystem(() => {
       }`);
 
       expect(messages).toEqual([
+        `TestComponent.html(1, 6): Property 'srcc' does not exist on type 'HTMLImageElement'. Did you mean 'src'?`,
         `TestComponent.html(1, 29): Property 'heihgt' does not exist on type 'TestComponent'. Did you mean 'height'?`,
-        `TestComponent.html(1, 6): Can't bind to 'srcc' since it isn't a known property of 'img'.`,
       ]);
     });
 
@@ -582,8 +582,9 @@ class TestComponent {
             inputs: {input: 'input'},
           }]);
 
-      expect(messages).toEqual(
-          [`TestComponent.html(3, 30): Type 'HTMLElement' is not assignable to type 'string'.`]);
+      expect(messages).toEqual([
+        `TestComponent.html(3, 30): Type 'HTMLSpanElement' is not assignable to type 'string'.`
+      ]);
     });
 
     it('allows access to protected members', () => {
@@ -607,6 +608,39 @@ class TestComponent {
         `TestComponent.html(1, 18): Property 'doFoo' is private and only accessible within class 'TestComponent'.`,
         `TestComponent.html(1, 30): Property 'message' is private and only accessible within class 'TestComponent'.`
       ]);
+    });
+  });
+
+  describe('dom bindings', () => {
+    it('validates property binding expression assignability for DOM bindings', () => {
+      const messages = diagnose(
+          `<img [id]="x" />`, `
+          class TestComponent {
+            x = 1;
+          }`,
+          [], undefined, {});
+
+      expect(messages).toEqual(
+          [`TestComponent.html(1, 6): Type 'number' is not assignable to type 'string'.`]);
+    });
+
+    it('allows nullable values in compatibility mode', () => {
+      const messages = diagnose(
+          `<img [id]="undefined" />`, `
+          class TestComponent {
+            x = 1;
+          }`,
+          [], undefined, {checkTypeOfDomBindingIgnoreNullable: true});
+
+      expect(messages).toEqual([]);
+    });
+
+    it('supports number values for width/height of `iframe`', () => {
+      const messages = diagnose(
+          `<iframe [height]="1" [width]="2"></iframe>`, `class TestComponent {}`, [], undefined,
+          {});
+
+      expect(messages).toEqual([]);
     });
   });
 
@@ -817,8 +851,8 @@ class TestComponent {
          expect(messages).toEqual([
            // These messages are expected to refer to the native
            // typings since the inputs/outputs haven't been exposed.
+           `TestComponent.html(1, 10): Property 'input' does not exist on type 'HTMLDivElement'. Did you mean 'oninput'?`,
            `TestComponent.html(1, 60): Argument of type 'Event' is not assignable to parameter of type 'string'.`,
-           `TestComponent.html(1, 10): Can't bind to 'input' since it isn't a known property of 'div'.`
          ]);
        });
 

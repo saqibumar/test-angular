@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import {AST, BindingPipe, BindingType, BoundTarget, Call, createCssSelectorFromNode, CssSelector, DYNAMIC_TYPE, ImplicitReceiver, ParsedEventType, ParseSourceSpan, PropertyRead, PropertyWrite, R3Identifiers, SafeCall, SafePropertyRead, SchemaMetadata, SelectorMatcher, ThisReceiver, TmplAstBoundAttribute, TmplAstBoundEvent, TmplAstBoundText, TmplAstDeferredBlock, TmplAstDeferredBlockTriggers, TmplAstElement, TmplAstForLoopBlock, TmplAstForLoopBlockEmpty, TmplAstHoverDeferredTrigger, TmplAstIcu, TmplAstIfBlock, TmplAstIfBlockBranch, TmplAstInteractionDeferredTrigger, TmplAstNode, TmplAstReference, TmplAstSwitchBlock, TmplAstSwitchBlockCase, TmplAstTemplate, TmplAstText, TmplAstTextAttribute, TmplAstVariable, TmplAstViewportDeferredTrigger, TransplantedType} from '@angular/compiler';
+import {AST, BindingPipe, BindingType, BoundTarget, Call, core, createCssSelectorFromNode, CssSelector, CUSTOM_ELEMENTS_SCHEMA, DYNAMIC_TYPE, ImplicitReceiver, NO_ERRORS_SCHEMA, ParsedEventType, ParseSourceSpan, PropertyRead, PropertyWrite, R3Identifiers, SafeCall, SafePropertyRead, SchemaMetadata, SelectorMatcher, shouldCheckPropertyWithSchemas, ThisReceiver, TmplAstBoundAttribute, TmplAstBoundEvent, TmplAstBoundText, TmplAstDeferredBlock, TmplAstDeferredBlockTriggers, TmplAstElement, TmplAstForLoopBlock, TmplAstForLoopBlockEmpty, TmplAstHoverDeferredTrigger, TmplAstIcu, TmplAstIfBlock, TmplAstIfBlockBranch, TmplAstInteractionDeferredTrigger, TmplAstNode, TmplAstReference, TmplAstSwitchBlock, TmplAstSwitchBlockCase, TmplAstTemplate, TmplAstText, TmplAstTextAttribute, TmplAstVariable, TmplAstViewportDeferredTrigger, TransplantedType} from '@angular/compiler';
 import ts from 'typescript';
 
 import {Reference} from '../../imports';
@@ -17,6 +17,7 @@ import {TemplateId, TypeCheckableDirectiveMeta, TypeCheckBlockMetadata} from '..
 import {addExpressionIdentifier, ExpressionIdentifier, markIgnoreDiagnostics} from './comments';
 import {addParseSpanInfo, addTemplateId, wrapForDiagnostics, wrapForTypeChecker} from './diagnostics';
 import {DomSchemaChecker} from './dom';
+import {domAllElementMappings, domBindingCompatMappings} from './dom_binding_compat';
 import {Environment} from './environment';
 import {astToTypescript, NULL_AS_ANY} from './expression';
 import {OutOfBandDiagnosticRecorder} from './oob';
@@ -903,7 +904,8 @@ class TcbDirectiveCtorCircularFallbackOp extends TcbOp {
  */
 class TcbDomSchemaCheckerOp extends TcbOp {
   constructor(
-      private tcb: Context, private element: TmplAstElement, private checkElement: boolean,
+      private tcb: Context, private element: TmplAstElement,
+      private options: {checkElementInSchemaRegistry: boolean},
       private claimedInputs: Set<string>) {
     super();
   }
@@ -913,22 +915,33 @@ class TcbDomSchemaCheckerOp extends TcbOp {
   }
 
   override execute(): ts.Expression|null {
-    if (this.checkElement) {
+    if (this.options.checkElementInSchemaRegistry) {
       this.tcb.domSchemaChecker.checkElement(
           this.tcb.id, this.element, this.tcb.schemas, this.tcb.hostIsStandalone);
     }
 
+    // Only check unclaimed inputs in the schema if we are not checking them via
+    // the TCB. I.e. we either check in `TcbUnclaimedInputsOp` or here.
+    if (this.tcb.env.config.checkTypeOfDomBindings === false) {
+      this._checkUnclaimedInputs();
+    }
+
+    return null;
+  }
+
+  private _checkUnclaimedInputs() {
     // TODO(alxhub): this could be more efficient.
     for (const binding of this.element.inputs) {
       const isPropertyBinding =
           binding.type === BindingType.Property || binding.type === BindingType.TwoWay;
 
-      if (isPropertyBinding && this.claimedInputs.has(binding.name)) {
-        // Skip this binding as it was claimed by a directive.
+      if (!isPropertyBinding || this.claimedInputs.has(binding.name)) {
+        // Skip this binding as it was claimed by a directive, or does not refer to a
+        // property (e.g. animation trigger).
         continue;
       }
 
-      if (isPropertyBinding && binding.name !== 'style' && binding.name !== 'class') {
+      if (binding.name !== 'style' && binding.name !== 'class') {
         // A direct binding to a property.
         const propertyName = ATTR_TO_PROP.get(binding.name) ?? binding.name;
         this.tcb.domSchemaChecker.checkProperty(
@@ -936,7 +949,6 @@ class TcbDomSchemaCheckerOp extends TcbOp {
             this.tcb.hostIsStandalone);
       }
     }
-    return null;
   }
 }
 
@@ -1111,42 +1123,111 @@ class TcbUnclaimedInputsOp extends TcbOp {
   override execute(): null {
     // `this.inputs` contains only those bindings not matched by any directive. These bindings go to
     // the element itself.
-    let elId: ts.Expression|null = null;
+    let elId: ts.Identifier|null = null;
+
+    const elementMappings = domBindingCompatMappings.get(this.element.name);
 
     // TODO(alxhub): this could be more efficient.
     for (const binding of this.element.inputs) {
       const isPropertyBinding =
           binding.type === BindingType.Property || binding.type === BindingType.TwoWay;
 
+      // Skip this binding as it was claimed by a directive.
       if (isPropertyBinding && this.claimedInputs.has(binding.name)) {
-        // Skip this binding as it was claimed by a directive.
         continue;
       }
 
-      const expr = widenBinding(tcbExpression(binding.value, this.tcb, this.scope), this.tcb);
+      let expr = widenBinding(tcbExpression(binding.value, this.tcb, this.scope), this.tcb);
+      addParseSpanInfo(expr, binding.sourceSpan);
 
-      if (this.tcb.env.config.checkTypeOfDomBindings && isPropertyBinding) {
-        if (binding.name !== 'style' && binding.name !== 'class') {
-          if (elId === null) {
-            elId = this.scope.resolve(this.element);
-          }
-          // A direct binding to a property.
-          const propertyName = ATTR_TO_PROP.get(binding.name) ?? binding.name;
-          const prop = ts.factory.createElementAccessExpression(
-              elId, ts.factory.createStringLiteral(propertyName));
-          const stmt = ts.factory.createBinaryExpression(
-              prop, ts.SyntaxKind.EqualsToken, wrapForDiagnostics(expr));
-          addParseSpanInfo(stmt, binding.sourceSpan);
-          this.scope.addStatement(ts.factory.createExpressionStatement(stmt));
-        } else {
-          this.scope.addStatement(ts.factory.createExpressionStatement(expr));
-        }
-      } else {
-        // A binding to an animation, attribute, class or style. For now, only validate the right-
-        // hand side of the expression.
-        // TODO: properly check class and style bindings.
+      // Skip checking non-property bindings, or bindings to `style` and `class`.
+      // TODO: consider checking class and style bindings.
+      if (!isPropertyBinding || binding.name === 'style' || binding.name === 'class') {
         this.scope.addStatement(ts.factory.createExpressionStatement(expr));
+        continue;
       }
+
+      const propertySchemaState =
+          shouldCheckPropertyWithSchemas(this.element.name, this.tcb.schemas);
+
+      // If the property is not allowed, we check it via the DOM schema checker to register
+      // a diagnostic as it's not allowed per schema. e.g. `ng-content` does not support
+      // any property bindings.
+      if (propertySchemaState === 'never-allowed') {
+        this.tcb.domSchemaChecker.checkProperty(
+            this.tcb.id, this.element, binding.name, binding.sourceSpan, this.tcb.schemas,
+            this.tcb.hostIsStandalone);
+        continue;
+      }
+
+      // If DOM type checking is disabled, or the property is exempted from checking due to its
+      // schema, only check the expression and continue.
+      if (!this.tcb.env.config.checkTypeOfDomBindings || propertySchemaState !== 'check') {
+        this.scope.addStatement(ts.factory.createExpressionStatement(expr));
+        continue;
+      }
+
+      // In compatibility mode when checking DOM bindings, ensure non-null user
+      // expressions as this is a common practice and otherwise DOM type checking
+      // would be extremely breaking. We should incrementally migrate existing applications.
+      if (this.tcb.env.config.checkTypeOfDomBindingIgnoreNullable) {
+        expr = ts.factory.createNonNullExpression(ts.factory.createParenthesizedExpression(expr));
+      }
+
+      // Check binding DOM type by using the `document.createElement` result from `TcbElementOp`.
+      if (elId === null) {
+        const elementExpr = this.scope.resolve(this.element);
+        if (!ts.isIdentifier(elementExpr)) {
+          throw new Error(
+              'Unexpected expression for resolved `TmplAstElement`. Expected an identifier.');
+        }
+        elId = elementExpr;
+      }
+
+      // A direct binding to a property.
+      const propertyName = ATTR_TO_PROP.get(binding.name) ?? binding.name;
+
+      if (binding.securityContext !== core.SecurityContext.NONE) {
+        // SKIP security context bindings for now (to determine other failure modes).
+        this.scope.addStatement(ts.factory.createExpressionStatement(expr));
+        continue;
+      }
+
+      const additionalUnionTypes: ts.TypeNode[] = [];
+      if (elementMappings?.[propertyName] !== undefined) {
+        additionalUnionTypes.push(elementMappings[propertyName].additionalType());
+      }
+      if (domAllElementMappings[propertyName] !== undefined) {
+        additionalUnionTypes.push(domAllElementMappings[propertyName].additionalType());
+      }
+
+      let prop: ts.Expression = ts.factory.createElementAccessExpression(
+          elId, ts.factory.createStringLiteral(propertyName));
+
+      if (additionalUnionTypes.length > 0) {
+        const tmpProp = this.tcb.allocateId();
+        const tmpVariable = tsCreateVariable(
+            tmpProp, ts.factory.createNonNullExpression(ts.factory.createNull()),
+            ts.factory.createUnionTypeNode([
+              ts.factory.createIndexedAccessTypeNode(
+                  ts.factory.createTypeQueryNode(elId, undefined),
+                  ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(propertyName))),
+              // Union with the additional types.
+              ...additionalUnionTypes,
+            ]));
+        this.scope.addStatement(tmpVariable);
+        prop = tmpProp;
+      }
+
+      addParseSpanInfo(prop, binding.sourceSpan);
+
+      // Note: Expression needs to be parenthesized, as otherwise the span info comments
+      // would be attributed to the binary expression.
+      const binaryExpr: ts.Expression = ts.factory.createBinaryExpression(
+          prop, ts.SyntaxKind.EqualsToken, wrapForDiagnostics(expr));
+      addParseSpanInfo(binaryExpr, binding.sourceSpan);
+
+      this.scope.addStatement(ts.factory.createExpressionStatement(binaryExpr));
     }
 
     return null;
@@ -2094,8 +2175,11 @@ class Scope {
       // to add them if needed.
       if (node instanceof TmplAstElement) {
         this.opQueue.push(new TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs));
-        this.opQueue.push(
-            new TcbDomSchemaCheckerOp(this.tcb, node, /* checkElement */ true, claimedInputs));
+        this.opQueue.push(new TcbDomSchemaCheckerOp(
+            this.tcb, node, {
+              checkElementInSchemaRegistry: true,
+            },
+            claimedInputs));
       }
       return;
     } else {
@@ -2151,12 +2235,15 @@ class Scope {
       }
 
       this.opQueue.push(new TcbUnclaimedInputsOp(this.tcb, this, node, claimedInputs));
-      // If there are no directives which match this element, then it's a "plain" DOM element (or a
-      // web component), and should be checked against the DOM schema. If any directives match,
-      // we must assume that the element could be custom (either a component, or a directive like
-      // <router-outlet>) and shouldn't validate the element name itself.
-      const checkElement = directives.length === 0;
-      this.opQueue.push(new TcbDomSchemaCheckerOp(this.tcb, node, checkElement, claimedInputs));
+      this.opQueue.push(new TcbDomSchemaCheckerOp(
+          this.tcb, node, {
+            // If there are no directives which match this element, then it's a "plain" DOM element
+            // (or a web component), and should be checked against the DOM schema. If any directives
+            // match, we must assume that the element could be custom (either a component, or a
+            // directive like <router-outlet>) and shouldn't validate the element name itself.
+            checkElementInSchemaRegistry: directives.length === 0,
+          },
+          claimedInputs));
     }
   }
 
@@ -2212,7 +2299,8 @@ class Scope {
             }
           }
         }
-        this.opQueue.push(new TcbDomSchemaCheckerOp(this.tcb, node, !hasDirectives, claimedInputs));
+        this.opQueue.push(new TcbDomSchemaCheckerOp(
+            this.tcb, node, {checkElementInSchemaRegistry: !hasDirectives}, claimedInputs));
       }
 
       this.appendDeepSchemaChecks(node.children);

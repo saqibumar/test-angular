@@ -298,20 +298,11 @@ export class DomElementSchemaRegistry extends ElementSchemaRegistry {
   }
 
   override hasProperty(tagName: string, propName: string, schemaMetas: SchemaMetadata[]): boolean {
-    if (schemaMetas.some((schema) => schema.name === NO_ERRORS_SCHEMA.name)) {
+    const shouldCheck = shouldCheckPropertyWithSchemas(tagName, schemaMetas);
+    if (shouldCheck === 'all-allowed') {
       return true;
-    }
-
-    if (tagName.indexOf('-') > -1) {
-      if (isNgContainer(tagName) || isNgContent(tagName)) {
-        return false;
-      }
-
-      if (schemaMetas.some((schema) => schema.name === CUSTOM_ELEMENTS_SCHEMA.name)) {
-        // Can't tell now as we don't know which properties a custom element will get
-        // once it is instantiated
-        return true;
-      }
+    } else if (shouldCheck === 'never-allowed') {
+      return false;
     }
 
     const elementProperties =
@@ -472,4 +463,26 @@ function _isPixelDimensionStyle(prop: string): boolean {
     default:
       return false;
   }
+}
+
+// TODO
+export function shouldCheckPropertyWithSchemas(
+    tagName: string, schemas: SchemaMetadata[]): 'all-allowed'|'never-allowed'|'check' {
+  if (schemas.some((schema) => schema.name === NO_ERRORS_SCHEMA.name)) {
+    return 'all-allowed';
+  }
+
+  if (tagName.indexOf('-') > -1) {
+    if (isNgContainer(tagName) || isNgContent(tagName)) {
+      return 'never-allowed';
+    }
+
+    if (schemas.some((schema) => schema.name === CUSTOM_ELEMENTS_SCHEMA.name)) {
+      // Can't tell now as we don't know which properties a custom element will get
+      // once it is instantiated
+      return 'all-allowed';
+    }
+  }
+
+  return 'check';
 }

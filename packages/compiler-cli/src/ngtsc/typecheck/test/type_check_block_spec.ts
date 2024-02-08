@@ -857,7 +857,8 @@ describe('type check blocks', () => {
       honorAccessModifiersForInputBindings: false,
       strictNullInputBindings: true,
       checkTypeOfAttributes: true,
-      checkTypeOfDomBindings: false,
+      checkTypeOfDomBindings: true,
+      checkTypeOfDomBindingIgnoreNullable: false,
       checkTypeOfOutputEvents: true,
       checkTypeOfAnimationEvents: true,
       checkTypeOfDomEvents: true,
@@ -920,14 +921,14 @@ describe('type check blocks', () => {
       it('should include null and undefined when enabled', () => {
         const block = tcb(TEMPLATE, DIRECTIVES);
         expect(block).toContain('_t1.dirInput = (((this).a));');
-        expect(block).toContain('((this).b);');
+        expect(block).toContain('(((this).b));');
       });
       it('should use the non-null assertion operator when disabled', () => {
         const DISABLED_CONFIG:
             TypeCheckingConfig = {...BASE_CONFIG, strictNullInputBindings: false};
         const block = tcb(TEMPLATE, DIRECTIVES, DISABLED_CONFIG);
         expect(block).toContain('_t1.dirInput = (((this).a)!);');
-        expect(block).toContain('((this).b)!;');
+        expect(block).toContain('(((this).b)!);');
       });
     });
 
@@ -936,7 +937,7 @@ describe('type check blocks', () => {
         const TEMPLATE = `<div dir [dirInput]="a" [nonDirInput]="b"></div>`;
         const block = tcb(TEMPLATE, DIRECTIVES);
         expect(block).toContain('_t1.dirInput = (((this).a));');
-        expect(block).toContain('((this).b);');
+        expect(block).toContain('(((this).b));');
       });
 
       it('should not check types of bindings when disabled', () => {
@@ -945,7 +946,7 @@ describe('type check blocks', () => {
             TypeCheckingConfig = {...BASE_CONFIG, checkTypeOfInputBindings: false};
         const block = tcb(TEMPLATE, DIRECTIVES, DISABLED_CONFIG);
         expect(block).toContain('_t1.dirInput = ((((this).a) as any));');
-        expect(block).toContain('(((this).b) as any);');
+        expect(block).toContain('((((this).b) as any));');
       });
 
       it('should wrap the cast to any in parentheses when required', () => {
