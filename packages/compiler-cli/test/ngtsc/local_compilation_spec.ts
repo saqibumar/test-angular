@@ -2210,7 +2210,7 @@ runInEachFileSystem(
                  });
             });
 
-            describe('custom decorator', () => {
+            describe('custom/duplicate decorator', () => {
               it('should produce diagnostic for each custom decorator', () => {
                 env.write('test.ts', `
           import {Component} from '@angular/core';
@@ -2235,9 +2235,47 @@ runInEachFileSystem(
                 expect(errors[0].code).toBe(ngErrorCode(ErrorCode.DECORATOR_UNEXPECTED));
                 expect(errors[1].code).toBe(ngErrorCode(ErrorCode.DECORATOR_UNEXPECTED));
                 expect(text1).toContain(
-                    'In local compilation mode, Angular does not support custom decorators');
+                    'In local compilation mode, Angular does not support custom decorators or duplicate Angular decorators');
                 expect(text2).toContain(
-                    'In local compilation mode, Angular does not support custom decorators');
+                    'In local compilation mode, Angular does not support custom decorators or duplicate Angular decorators');
+              });
+
+              it('should produce diagnostic for duplicate Component decorator', () => {
+                env.write('test.ts', `
+          import {Component} from '@angular/core';
+          import {SomeServiceImpl} from './some-where';
+
+          @Component({template: 'Hello!'})
+          @Component({template: 'Bye!'})
+          export class SomeComp {            
+          }
+          `);
+
+                const errors = env.driveDiagnostics();
+
+                expect(errors.length).toBe(1);
+
+                const text1 = ts.flattenDiagnosticMessageText(errors[0].messageText, '\n');
+
+                expect(errors[0].code).toBe(ngErrorCode(ErrorCode.DECORATOR_UNEXPECTED));
+                expect(text1).toContain(
+                    'In local compilation mode, Angular does not support custom decorators or duplicate Angular decorators');
+              });
+
+              it('should not produce diagnostic for duplicate Injectable decorator', () => {
+                env.write('test.ts', `
+          import {Injectable} from '@angular/core';
+          import {SomeServiceImpl} from './some-where';
+
+          @Injectable({providedIn: 'root', useExisting: SomeServiceImpl})
+          @Injectable({providedIn: 'root'})
+          export class SomeService {            
+          }
+          `);
+
+                const errors = env.driveDiagnostics();
+
+                expect(errors.length).toBe(0);
               });
             });
           });
