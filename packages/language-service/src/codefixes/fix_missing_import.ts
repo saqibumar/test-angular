@@ -52,6 +52,7 @@ function getCodeActions({
   preferences,
   errorCode,
   tsLs,
+  moduleSpecifiers,
 }: CodeActionContext) {
   let codeActions: ts.CodeFixAction[] = [];
   const checker = compiler.getTemplateTypeChecker();
@@ -87,7 +88,12 @@ function getCodeActions({
   }
   for (const currMatch of matches.values()) {
     const currentMatchCodeAction =
-      getCodeActionToImportTheDirectiveDeclaration(compiler, importOn, currMatch) ?? [];
+      getCodeActionToImportTheDirectiveDeclaration(
+        compiler,
+        importOn,
+        currMatch,
+        moduleSpecifiers,
+      ) ?? [];
 
     codeActions.push(
       ...currentMatchCodeAction.map<ts.CodeFixAction>((action) => {

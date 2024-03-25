@@ -46,6 +46,7 @@ import {
   getPropertyAssignmentFromValue,
 } from './ts_utils';
 import {getTemplateInfoAtPosition, isTypeScriptFile} from './utils';
+import {ModuleSpecifiers} from './module_specifiers';
 
 type LanguageServiceConfig = Omit<PluginConfig, 'angularOnly'>;
 
@@ -53,6 +54,7 @@ export class LanguageService {
   private options: CompilerOptions;
   readonly compilerFactory: CompilerFactory;
   private readonly codeFixes: CodeFixes;
+  private readonly moduleSpecifiers: ModuleSpecifiers;
 
   constructor(
     private readonly project: ts.server.Project,
@@ -71,7 +73,8 @@ export class LanguageService {
     const programDriver = createProgramDriver(project);
     const adapter = new LanguageServiceAdapter(project);
     this.compilerFactory = new CompilerFactory(adapter, programDriver, this.options);
-    this.codeFixes = new CodeFixes(tsLS, ALL_CODE_FIXES_METAS);
+    this.moduleSpecifiers = new ModuleSpecifiers(project, programDriver);
+    this.codeFixes = new CodeFixes(tsLS, ALL_CODE_FIXES_METAS, this.moduleSpecifiers);
   }
 
   getCompilerOptions(): CompilerOptions {
@@ -264,6 +267,7 @@ export class LanguageService {
       templateInfo.component,
       node,
       positionDetails,
+      this.moduleSpecifiers,
     );
   }
 
