@@ -1206,9 +1206,6 @@
     "name": "hasTagAndTypeMatch"
   },
   {
-    "name": "hasValidLength"
-  },
-  {
     "name": "hasValidator"
   },
   {
@@ -1423,6 +1420,9 @@
   },
   {
     "name": "leaveViewLight"
+  },
+  {
+    "name": "lengthOrSize"
   },
   {
     "name": "lookupTokenUsingModuleInjector"
