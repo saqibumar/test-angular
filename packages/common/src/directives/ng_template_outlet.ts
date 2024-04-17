@@ -9,10 +9,10 @@
 import {
   Directive,
   EmbeddedViewRef,
+  inject,
   Injector,
   Input,
   OnChanges,
-  SimpleChange,
   SimpleChanges,
   TemplateRef,
   ViewContainerRef,
@@ -62,8 +62,15 @@ export class NgTemplateOutlet<C = unknown> implements OnChanges {
    */
   @Input() public ngTemplateOutlet: TemplateRef<C> | null = null;
 
-  /** Injector to be used within the embedded view. */
-  @Input() public ngTemplateOutletInjector: Injector | null = null;
+  /**
+   * Injector to be used within the embedded view. A value of "outlet" can be used to indicate
+   * that the injector should be inherited from the template outlet's location in the instantiated DOM.
+   */
+  @Input() public ngTemplateOutletInjector: Injector | 'outlet' | null = null;
+
+  protected injector = inject(Injector);
+
+  private _childInjector: Injector | undefined;
 
   constructor(private _viewContainerRef: ViewContainerRef) {}
 
@@ -85,9 +92,23 @@ export class NgTemplateOutlet<C = unknown> implements OnChanges {
       // without having to destroy and re-create views whenever the context changes.
       const viewContext = this._createContextForwardProxy();
       this._viewRef = viewContainerRef.createEmbeddedView(this.ngTemplateOutlet, viewContext, {
-        injector: this.ngTemplateOutletInjector ?? undefined,
+        injector: this._getInjector(),
       });
     }
+  }
+
+  /**
+   * Gets the injector to use for the template outlet based on ngTemplateOutletInjector.
+   */
+  private _getInjector(): Injector | undefined {
+    if (this.ngTemplateOutletInjector === 'outlet') {
+      // We create a child injector to behave as an embeddedView injector that consults the node
+      // injector for each lookup.
+      this._childInjector =
+        this._childInjector ?? Injector.create({providers: [], parent: this.injector});
+      return this._childInjector;
+    }
+    return this.ngTemplateOutletInjector ?? undefined;
   }
 
   /**
