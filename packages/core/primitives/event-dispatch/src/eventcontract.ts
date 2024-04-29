@@ -629,7 +629,7 @@ function shouldPreventDefaultBeforeDispatching(
 export function parseActions(actionElement: Element, container: Node): {[key: string]: string} {
   let actionMap: {[key: string]: string} | undefined = cache.get(actionElement);
   if (!actionMap) {
-    const jsactionAttribute = getAttr(actionElement, Attribute.JSACTION);
+    const jsactionAttribute = actionElement.getAttribute(Attribute.JSACTION);
     if (!jsactionAttribute) {
       actionMap = EMPTY_ACTION_MAP;
       cache.set(actionElement, actionMap);
@@ -645,8 +645,8 @@ export function parseActions(actionElement: Element, container: Node): {[key: st
           }
           const colon = value.indexOf(Char.EVENT_ACTION_SEPARATOR);
           const hasColon = colon !== -1;
-          const type = hasColon ? stringTrim(value.substr(0, colon)) : DEFAULT_EVENT_TYPE;
-          const action = hasColon ? stringTrim(value.substr(colon + 1)) : value;
+          const type = hasColon ? value.substr(0, colon).trim() : DEFAULT_EVENT_TYPE;
+          const action = hasColon ? value.substr(colon + 1).trim() : value;
           actionMap[type] = action;
         }
         cache.setParsed(jsactionAttribute, actionMap);
@@ -721,52 +721,12 @@ function isNamespacedAction(action: string): boolean {
 function getNamespaceFromElement(element: Element): string | null {
   let namespace = cache.getNamespace(element);
   // Only query for the attribute if it has not been queried for
-  // before. getAttr() returns null if an attribute is not present. Thus,
+  // before. getAttribute() returns null if an attribute is not present. Thus,
   // namespace is string|null if the query took place in the past, or
   // undefined if the query did not take place.
   if (namespace === undefined) {
-    namespace = getAttr(element, Attribute.JSNAMESPACE);
+    namespace = element.getAttribute(Attribute.JSNAMESPACE);
     cache.setNamespace(element, namespace);
   }
   return namespace;
-}
-
-/**
- * Accesses the event handler attribute value of a DOM node. It guards
- * against weird situations (described in the body) that occur in
- * connection with nodes that are removed from their document.
- * @param element The DOM element.
- * @param attribute The name of the attribute to access.
- * @return The attribute value if it was found, null otherwise.
- */
-function getAttr(element: Element, attribute: string): string | null {
-  let value = null;
-  // NOTE: Nodes in IE do not always have a getAttribute
-  // method defined. This is the case where sourceElement has in
-  // fact been removed from the DOM before eventContract begins
-  // handling - where a parentNode does not have getAttribute
-  // defined.
-  // NOTE: We must use the 'in' operator instead of the regular dot
-  // notation, since the latter fails in IE8 if the getAttribute method is not
-  // defined. See b/7139109.
-  if ('getAttribute' in element) {
-    value = element.getAttribute(attribute);
-  }
-  return value;
-}
-
-/**
- * Helper function to trim whitespace from the beginning and the end
- * of the string. This deliberately doesn't use the closure equivalent
- * to keep dependencies small.
- * @param str  Input string.
- * @return  Trimmed string.
- */
-function stringTrim(str: string): string {
-  if (typeof String.prototype.trim === 'function') {
-    return str.trim();
-  }
-
-  const trimmedLeft = str.replace(/^\s+/, '');
-  return trimmedLeft.replace(/\s+$/, '');
 }
