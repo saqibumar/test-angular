@@ -455,7 +455,11 @@ export type ɵGetProperty<T, K> =
  *
  * @publicApi
  */
-export abstract class AbstractControl<TValue = any, TRawValue extends TValue = TValue> {
+export abstract class AbstractControl<
+  TValue = any,
+  TRawValue extends TValue = TValue,
+  TValueWithOptionalControlStates = any,
+> {
   /** @internal */
   _pendingDirty = false;
 
@@ -1275,7 +1279,7 @@ export abstract class AbstractControl<TValue = any, TRawValue extends TValue = T
   /**
    * Resets the control. Abstract method (implemented in sub-classes).
    */
-  abstract reset(value?: TValue, options?: Object): void;
+  abstract reset(value?: TValueWithOptionalControlStates, options?: Object): void;
 
   /**
    * The raw value of this control. For most control implementations, the raw value will include
