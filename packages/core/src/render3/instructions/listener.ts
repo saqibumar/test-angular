@@ -175,6 +175,14 @@ export function listenerInternal(
   //   such as `window` or `document`).
   if (tNode.type & TNodeType.AnyRNode || eventTargetResolver) {
     const native = getNativeByTNode(tNode, lView) as RElement;
+
+    // Specific behavior for value two-way binding on an input element.
+    const eventMapping = createTwoWayBindingEventMapping(native, eventName);
+    const eventMapperFn = eventMapping ? eventMapping.mapperFn : null;
+    if (eventMapping) {
+      eventName = eventMapping.eventName;
+    }
+
     const target = eventTargetResolver ? eventTargetResolver(native) : native;
     const lCleanupIndex = lCleanup.length;
     const idxOrTargetGetter = eventTargetResolver
@@ -216,7 +224,14 @@ export function listenerInternal(
       (<any>existingListener).__ngLastListenerFn__ = listenerFn;
       processOutputs = false;
     } else {
-      listenerFn = wrapListener(tNode, lView, context, listenerFn, false /** preventDefault */);
+      listenerFn = wrapListener(
+        tNode,
+        lView,
+        context,
+        listenerFn,
+        false /** preventDefault */,
+        eventMapperFn,
+      );
       const cleanupFn = renderer.listen(target as RElement, eventName, listenerFn);
       ngDevMode && ngDevMode.rendererAddEventListener++;
 
@@ -226,7 +241,14 @@ export function listenerInternal(
   } else {
     // Even if there is no native listener to add, we still need to wrap the listener so that OnPush
     // ancestors are marked dirty when an event occurs.
-    listenerFn = wrapListener(tNode, lView, context, listenerFn, false /** preventDefault */);
+    listenerFn = wrapListener(
+      tNode,
+      lView,
+      context,
+      listenerFn,
+      false /** preventDefault */,
+      null /** eventMapper */,
+    );
   }
 
   // subscribe to directive outputs
@@ -293,6 +315,7 @@ function wrapListener(
   context: {} | null,
   listenerFn: (e?: any) => any,
   wrapWithPreventDefault: boolean,
+  eventMapperFn: ((e: any) => any) | null,
 ): EventListener {
   // Note: we are performing most of the work in the listener function itself
   // to optimize listener registration.
@@ -301,6 +324,10 @@ function wrapListener(
     // so that it can be invoked programmatically by `DebugNode.triggerEventHandler`.
     if (e === Function) {
       return listenerFn;
+    }
+
+    if (eventMapperFn) {
+      e = eventMapperFn(e);
     }
 
     // In order to be backwards compatible with View Engine, events on component host nodes
@@ -325,6 +352,24 @@ function wrapListener(
 
     return result;
   };
+}
+
+/**
+ * In the case of two-way binding on an input element, we need to map the `valueChange` event to `input`
+ */
+function createTwoWayBindingEventMapping(
+  nativeElement: RElement,
+  eventName: string,
+): {mapperFn: (e: any) => any; eventName: string} | null {
+  if (['INPUT', 'SELECT'].includes(nativeElement.tagName)) {
+    if (eventName === 'valueChange') {
+      return {mapperFn: (e: any) => e.target.value, eventName: 'input'};
+    } else if (eventName === 'checkedChange') {
+      return {mapperFn: (e: any) => e.target.checked, eventName: 'input'};
+    }
+  }
+
+  return null;
 }
 
 /** Describes a subscribable output field value. */

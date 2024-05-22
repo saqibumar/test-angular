@@ -21,6 +21,8 @@ import {
   ViewChild,
   ViewChildren,
   ViewContainerRef,
+  effect,
+  signal,
 } from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
@@ -247,6 +249,140 @@ describe('event listeners', () => {
       const button = fixture.nativeElement.querySelector('button');
       button.click();
       expect(fixture.componentInstance.comp).toBeInstanceOf(MyComp);
+    });
+
+    it('should support 2-way binding on input value', () => {
+      const loggedValues: string[] = [];
+      @Component({
+        selector: 'app-root',
+        standalone: true,
+        template: ` <input [(value)]="name" />`,
+      })
+      class App {
+        name = signal('Angular');
+        effect = effect(() => loggedValues.push(this.name()));
+      }
+
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe('Angular');
+
+      const input = fixture.nativeElement.querySelector('input');
+      input.value = 'Angular 2';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe('Angular 2');
+    });
+
+    it('should not break value binding on directive', () => {
+      @Directive({
+        selector: '[myDir]',
+        standalone: true,
+      })
+      class ValueDir {
+        value = '';
+        @Output() valueChange = new EventEmitter<string>();
+      }
+
+      @Component({
+        selector: 'app-root',
+        template: ` <div myDir [(value)]="value"></div>`,
+        standalone: true,
+        imports: [ValueDir],
+      })
+      class App {
+        value = 'something';
+        @ViewChild(ValueDir) dir!: ValueDir;
+      }
+
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+
+      fixture.componentInstance.dir.valueChange.emit('Angular');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value).toBe('Angular');
+
+      fixture.componentInstance.dir.valueChange.emit('Angular 2');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value).toBe('Angular 2');
+    });
+
+    it('should support 2-way binding on input value with numbers', () => {
+      const loggedValues: any[] = [];
+      @Component({
+        selector: 'app-root',
+        standalone: true,
+        template: ` <input [(value)]="numberValue" />`,
+      })
+      class App {
+        numberValue = signal(0);
+        effect = effect(() => loggedValues.push(this.numberValue()));
+      }
+
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe(0);
+
+      const input = fixture.nativeElement.querySelector('input');
+      input.value = 2;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      // TODO: Fix this behavior, we shouldn't be changing types
+      expect(loggedValues.at(-1)).toBe('2');
+    });
+
+    it('should support 2-way binding on select value', () => {
+      const loggedValues: string[] = [];
+      @Component({
+        selector: 'app-root',
+        standalone: true,
+        template: `
+        <select [(value)]="name">
+          <option value="foo">Foo</option>
+          <option value="bar">Bar</option>
+          <option value="baz">Baz</option>
+        </select>
+        `,
+      })
+      class App {
+        name = signal('bar');
+        effect = effect(() => loggedValues.push(this.name()));
+      }
+
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe('bar');
+
+      const select = fixture.nativeElement.querySelector('select');
+      select.value = 'baz';
+      select.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe('baz');
+    });
+
+    it('should support 2-way binding on checkbox', () => {
+      const loggedValues: boolean[] = [];
+      @Component({
+        selector: 'app-root',
+        standalone: true,
+        template: `
+        <input type="checkbox" [(checked)]="isChecked" />
+        `,
+      })
+      class App {
+        isChecked = signal(true);
+        effect = effect(() => loggedValues.push(this.isChecked()));
+      }
+
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe(true);
+
+      const input = fixture.nativeElement.querySelector('input');
+      input.checked = false;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(loggedValues.at(-1)).toBe(false);
     });
   });
 
