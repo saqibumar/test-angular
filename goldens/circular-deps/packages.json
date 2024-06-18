@@ -67,12 +67,6 @@
     "packages/forms/src/forms.ts"
   ],
   [
-    "packages/forms/src/directives.ts",
-    "packages/forms/src/directives/ng_control_status.ts",
-    "packages/forms/src/directives/reactive_directives/form_group_directive.ts",
-    "packages/forms/src/forms.ts"
-  ],
-  [
     "packages/forms/src/directives/abstract_form_group_directive.ts",
     "packages/forms/src/directives/control_container.ts",
     "packages/forms/src/directives/form_interface.ts"
