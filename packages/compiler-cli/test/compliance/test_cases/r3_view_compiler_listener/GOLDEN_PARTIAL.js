@@ -924,7 +924,7 @@ import { Component, Directive, model, signal } from '@angular/core';
 import * as i0 from "@angular/core";
 export class NgModelDirective {
     constructor() {
-        this.ngModel = model.required();
+        this.ngModel = model.required(...(ngDevMode ? [{ debugName: "ngModel" }] : []));
     }
 }
 NgModelDirective.ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "0.0.0-PLACEHOLDER", ngImport: i0, type: NgModelDirective, deps: [], target: i0.ɵɵFactoryTarget.Directive });
