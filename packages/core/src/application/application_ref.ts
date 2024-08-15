@@ -314,7 +314,6 @@ export class ApplicationRef {
   // Needed for ComponentFixture temporarily during migration of autoDetect behavior
   // Eventually the hostView of the fixture should just attach to ApplicationRef.
   private externalTestViews: Set<InternalViewRef<unknown>> = new Set();
-  private beforeRender = new Subject<boolean>();
   /** @internal */
   afterTick = new Subject<void>();
   /** @internal */
@@ -604,7 +603,6 @@ export class ApplicationRef {
       // Some notifications to run a `tick` will only trigger render hooks. so we skip refreshing views the first time through.
       // After the we execute render hooks in the first pass, we loop while views are marked dirty and should refresh them.
       if (refreshViews || !isFirstPass) {
-        this.beforeRender.next(isFirstPass);
         for (let {_lView, notifyErrorHandler} of this.allViews) {
           detectChangesInViewIfRequired(
             _lView,
