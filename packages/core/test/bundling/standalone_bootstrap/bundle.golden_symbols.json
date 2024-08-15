@@ -471,6 +471,9 @@
     "name": "_retrieveHydrationInfoImpl"
   },
   {
+    "name": "_tickOnMicrotaskEmpty"
+  },
+  {
     "name": "_wasLastNodeCreated"
   },
   {
@@ -1033,6 +1036,9 @@
   },
   {
     "name": "scheduleCallbackWithRafRace"
+  },
+  {
+    "name": "schedulerTickApplyArgs"
   },
   {
     "name": "searchTokensOnInjector"

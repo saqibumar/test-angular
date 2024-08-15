@@ -25,6 +25,7 @@ import {
   ɵNoopNgZone as NoopNgZone,
   ɵZONELESS_ENABLED as ZONELESS_ENABLED,
   ɵPendingTasks as PendingTasks,
+  ɵrunTickInZoneAndPreventDuplicate,
 } from '@angular/core';
 import {Subscription} from 'rxjs';
 
@@ -34,7 +35,6 @@ import {TestBedApplicationErrorHandler} from './application_error_handler';
 
 interface TestAppRef {
   externalTestViews: Set<ViewRef>;
-  skipCheckNoChangesForExternalTestViews: Set<ViewRef>;
 }
 
 /**
@@ -132,27 +132,22 @@ export class ComponentFixture<T> {
    */
   detectChanges(checkNoChanges = true): void {
     this._effectRunner.flush();
-    const originalCheckNoChanges = this.componentRef.changeDetectorRef.checkNoChanges;
-    try {
-      if (!checkNoChanges) {
-        this.componentRef.changeDetectorRef.checkNoChanges = () => {};
-      }
 
-      if (this.zonelessEnabled) {
-        this._appRef.tick();
-      } else {
-        // Run the change detection inside the NgZone so that any async tasks as part of the change
-        // detection are captured by the zone and can be waited for in isStable.
-        // Run any effects that were created/dirtied during change detection. Such effects might become
-        // dirty in response to input signals changing.
-        this._ngZone.run(() => {
-          this.changeDetectorRef.detectChanges();
-          this.checkNoChanges();
-        });
-      }
+    const originalCheckNoChanges = this.componentRef.changeDetectorRef.checkNoChanges;
+    if (!checkNoChanges) {
+      this.componentRef.changeDetectorRef.checkNoChanges = () => {};
+    }
+
+    try {
+      this._testAppRef.externalTestViews.add(this.componentRef.hostView);
+      ɵrunTickInZoneAndPreventDuplicate(this._ngZone, this._appRef, true);
     } finally {
+      if (!this.autoDetect) {
+        this._testAppRef.externalTestViews.delete(this.componentRef.hostView);
+      }
       this.componentRef.changeDetectorRef.checkNoChanges = originalCheckNoChanges;
     }
+
     this._effectRunner.flush();
   }
 

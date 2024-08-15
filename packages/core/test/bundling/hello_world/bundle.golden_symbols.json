@@ -390,6 +390,9 @@
     "name": "_retrieveHydrationInfoImpl"
   },
   {
+    "name": "_tickOnMicrotaskEmpty"
+  },
+  {
     "name": "activeConsumer"
   },
   {
@@ -931,6 +934,9 @@
   },
   {
     "name": "scheduleCallbackWithRafRace"
+  },
+  {
+    "name": "schedulerTickApplyArgs"
   },
   {
     "name": "searchTokensOnInjector"
