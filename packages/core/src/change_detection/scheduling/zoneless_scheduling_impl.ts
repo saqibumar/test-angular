@@ -20,7 +20,13 @@ import {
   scheduleCallbackWithRafRace,
 } from '../../util/callback_scheduler';
 import {performanceMarkFeature} from '../../util/performance';
-import {NgZone, NgZonePrivate, NoopNgZone, angularZoneInstanceIdProperty} from '../../zone/ng_zone';
+import {
+  NgZone,
+  NgZonePrivate,
+  NoopNgZone,
+  angularZoneInstanceIdProperty,
+  runTickInZoneAndPreventDuplicate,
+} from '../../zone/ng_zone';
 
 import {
   ChangeDetectionScheduler,
@@ -203,23 +209,14 @@ export class ChangeDetectionSchedulerImpl implements ChangeDetectionScheduler {
    *     render hooks when `false`.
    */
   private tick(shouldRefreshViews: boolean): void {
-    // When ngZone.run below exits, onMicrotaskEmpty may emit if the zone is
-    // stable. We want to prevent double ticking so we track whether the tick is
-    // already running and skip it if so.
     if (this.runningTick || this.appRef.destroyed) {
       return;
     }
 
     const task = this.taskService.add();
     try {
-      this.ngZone.run(
-        () => {
-          this.runningTick = true;
-          this.appRef._tick(shouldRefreshViews);
-        },
-        undefined,
-        this.schedulerTickApplyArgs,
-      );
+      this.runningTick = true;
+      runTickInZoneAndPreventDuplicate(this.ngZone, this.appRef, shouldRefreshViews);
     } catch (e: unknown) {
       this.taskService.remove(task);
       throw e;
