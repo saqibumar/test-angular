@@ -247,25 +247,26 @@ function expressionIsUsingAngularImportedSymbol(
     return false;
   }
 
-  return importDeclaration.moduleSpecifier.text === '@angular/core';
+  const specifier = importDeclaration.moduleSpecifier.text;
+  return specifier !== undefined && (specifier === '@angular/core' || specifier.includes('@angular/core/'));
 }
+
+const signalFunctions: ReadonlySet<string> = new Set([
+  'signal',
+  'computed',
+  'input',
+  'model',
+  'viewChild',
+  'viewChildren',
+  'contentChild',
+  'contentChildren',
+  'effect',
+]);
 
 function isSignalFunction(expression: ts.Identifier): boolean {
   const text = expression.text;
 
-  const signalFunction = new Set([
-    'signal',
-    'computed',
-    'input',
-    'model',
-    'viewChild',
-    'viewChildren',
-    'contentChild',
-    'contentChildren',
-    'effect',
-  ]);
-
-  return signalFunction.has(text);
+  return signalFunctions.has(text);
 }
 
 function getConfigArgPosition(expression: ts.Expression): number {
