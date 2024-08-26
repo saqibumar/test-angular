@@ -146,27 +146,22 @@ function isPropertyAssignmentCase(node: ts.Node): node is ts.ExpressionStatement
   if (!ts.isExpressionStatement(node)) {
     return false;
   }
-
   if (!ts.isBinaryExpression(node.expression)) {
     return false;
   }
 
   const binaryExpression = node.expression;
-
   if (binaryExpression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
     return false;
   }
-
   if (!ts.isCallExpression(binaryExpression.right)) {
     return false;
   }
-
   if (!ts.isPropertyAccessExpression(binaryExpression.left)) {
     return false;
   }
 
   let expression = binaryExpression.right.expression;
-
   if (ts.isPropertyAccessExpression(expression)) {
     expression = expression.expression;
   }
