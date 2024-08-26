@@ -214,7 +214,10 @@ function isPropertyDeclarationCase(
  * const mySignal = signal(123); // expressionIsUsingAngularImportedSymbol === true
  * ```
  */
-function expressionIsUsingAngularImportedSymbol(program: ts.Program, expression: ts.Expression): boolean {
+function expressionIsUsingAngularImportedSymbol(
+  program: ts.Program,
+  expression: ts.Expression,
+): boolean {
   const symbol = program.getTypeChecker().getSymbolAtLocation(expression);
   if (symbol === undefined) {
     return false;
@@ -289,7 +292,10 @@ function getConfigArgPosition(expression: ts.Expression): number {
   return 1;
 }
 
-function transformVariableDeclaration(program: ts.Program, node: ts.VariableDeclaration): ts.VariableDeclaration {
+function transformVariableDeclaration(
+  program: ts.Program,
+  node: ts.VariableDeclaration,
+): ts.VariableDeclaration {
   if (!node.initializer || !ts.isCallExpression(node.initializer)) return node;
 
   const expression = node.initializer.expression;
@@ -310,9 +316,12 @@ function transformVariableDeclaration(program: ts.Program, node: ts.VariableDecl
   );
 }
 
-function transformPropertyAssignment(program: ts.Program, node: ts.ExpressionStatement & {
-  expression: ts.BinaryExpression & {right: ts.CallExpression; left: ts.PropertyAccessExpression};
-}): ts.ExpressionStatement {
+function transformPropertyAssignment(
+  program: ts.Program,
+  node: ts.ExpressionStatement & {
+    expression: ts.BinaryExpression & {right: ts.CallExpression; left: ts.PropertyAccessExpression};
+  },
+): ts.ExpressionStatement {
   const expression = node.expression.right.expression;
   if (ts.isPropertyAccessExpression(expression)) {
     if (!expressionIsUsingAngularImportedSymbol(program, expression.expression)) {
@@ -327,15 +336,15 @@ function transformPropertyAssignment(program: ts.Program, node: ts.ExpressionSta
     ts.factory.createBinaryExpression(
       node.expression.left,
       node.expression.operatorToken,
-      insertDebugNameIntoCallExpression(
-        node.expression.right,
-        node.expression.left.name.getText(),
-      ),
+      insertDebugNameIntoCallExpression(node.expression.right, node.expression.left.name.getText()),
     ),
   );
 }
 
-function transformPropertyDeclaration(program: ts.Program, node: ts.PropertyDeclaration): ts.PropertyDeclaration {
+function transformPropertyDeclaration(
+  program: ts.Program,
+  node: ts.PropertyDeclaration,
+): ts.PropertyDeclaration {
   if (!node.initializer || !ts.isCallExpression(node.initializer)) return node;
 
   const expression = node.initializer.expression;
@@ -357,11 +366,10 @@ function transformPropertyDeclaration(program: ts.Program, node: ts.PropertyDecl
   );
 }
 
-
 /**
- * 
+ *
  * This transformer adds a debugName property to the config object of signal functions.
- * 
+ *
  * Signal functions:
  * - signal
  * - computed
@@ -372,29 +380,29 @@ function transformPropertyDeclaration(program: ts.Program, node: ts.PropertyDecl
  * - contentChild
  * - contentChildren
  * - effect
- * 
+ *
  * The debugName property is added conditionally based on the value of ngDevMode. This is done
  * to avoid adding the debugName property in production builds.
- * 
+ *
  * Ex:
  * ```ts
  * import {signal} from '@angular/core';
  * const mySignal = signal('Hello World');
  * ```
- * 
+ *
  * is transformed to:
  * ```ts
  * import {signal} from '@angular/core';
  * const mySignal = signal('Hello World', ...(ngDevMode ? [{ debugName: "mySignal" }] : []));
  * ```
- * 
+ *
  * The transformer supports the following cases:
- * 
+ *
  * - Variable declaration
  * ```ts
  * const mySignal = signal('Hello World');
  * ```
- * 
+ *
  * - Property assignment
  * ```ts
  * class MyClass {
@@ -404,40 +412,41 @@ function transformPropertyDeclaration(program: ts.Program, node: ts.PropertyDecl
  *  }
  * }
  * ```
- * 
+ *
  * - Property declaration
  * ```ts
  * class MyClass {
  *   mySignal: Signal<string> = signal('Hello World');
  * }
  * ```
- * 
+ *
  * Transform steps:
- * 
+ *
  * 1. Check if the node is an expression that uses an Angular imported symbol
  * 2. Check if the node is a variable declaration, property assignment, or property declaration
  * 3. Insert the debugName property into the config object of the signal function
- * 
+ *
  */
-export function signalMetadataTransform(program: ts.Program): (context: ts.TransformationContext) => (rootNode: ts.Node) => ts.Node | undefined {
-  return (context: ts.TransformationContext) =>
-    (rootNode: ts.Node) => {
-      const visit: ts.Visitor = (node) => {
-        if (isVariableDeclarationCase(node)) {
-          return transformVariableDeclaration(program, node);
-        }
+export function signalMetadataTransform(
+  program: ts.Program,
+): (context: ts.TransformationContext) => (rootNode: ts.Node) => ts.Node | undefined {
+  return (context: ts.TransformationContext) => (rootNode: ts.Node) => {
+    const visit: ts.Visitor = (node) => {
+      if (isVariableDeclarationCase(node)) {
+        return transformVariableDeclaration(program, node);
+      }
 
-        if (isPropertyAssignmentCase(node)) {
-          return transformPropertyAssignment(program, node);
-        }
+      if (isPropertyAssignmentCase(node)) {
+        return transformPropertyAssignment(program, node);
+      }
 
-        if (isPropertyDeclarationCase(node)) {
-          return transformPropertyDeclaration(program, node);
-        }
+      if (isPropertyDeclarationCase(node)) {
+        return transformPropertyDeclaration(program, node);
+      }
 
-        return ts.visitEachChild(node, visit, context);
-      };
-
-      return ts.visitNode(rootNode, visit);
+      return ts.visitEachChild(node, visit, context);
     };
+
+    return ts.visitNode(rootNode, visit);
+  };
 }

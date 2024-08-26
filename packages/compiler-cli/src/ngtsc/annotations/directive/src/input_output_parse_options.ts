@@ -11,7 +11,9 @@ import ts from 'typescript';
 import {ErrorCode, FatalDiagnosticError} from '../../../diagnostics';
 import {reflectObjectLiteral} from '../../../reflection';
 
-function checkInputForForDebugNameCase(optionsNode: ts.Expression): {alias: string | undefined} | void {
+function checkInputForForDebugNameCase(
+  optionsNode: ts.Expression,
+): {alias: string | undefined} | void {
   // We are trying to detect the following pattern:
   // input(...(ngDevMode ? [{ debugName: "testInput", alias: 'alias' }] : [{ alias: 'alias' }]))
 
@@ -95,14 +97,14 @@ function checkInputForForDebugNameCase(optionsNode: ts.Expression): {alias: stri
         'Argument needs to be an object literal that is statically analyzable',
       );
     }
-    
+
     return {alias: trueCaseAlias};
   }
 }
 
 /**
  * Parses and validates input and output initializer function options.
- * 
+ *
  * Tries to detect the signal debugName case and returns the alias if it is found.
  * Else assumes that the options are a static object literal and parses the `alias` option and returns it.
  * The other options for signal inputs are runtime constructs that aren't relevant at compile time.
