@@ -209,21 +209,7 @@ function isPropertyDeclarationCase(
  * const mySignal = signal(123); // expressionIsUsingAngularImportedSymbol === true
  * ```
  */
-function expressionIsUsingAngularImportedSymbol(program: ts.Program, node: ts.Node) {
-  let expression: ts.Expression;
-
-  if (isVariableDeclarationCase(node) || isPropertyDeclarationCase(node)) {
-    expression = node.initializer.expression;
-  } else if (isPropertyAssignmentCase(node)) {
-    expression = node.expression.right.expression;
-  } else {
-    return false;
-  }
-
-  if (ts.isPropertyAccessExpression(expression)) {
-    expression = expression.expression;
-  }
-
+function expressionIsUsingAngularImportedSymbol(program: ts.Program, expression: ts.Expression) {
   const symbol = program.getTypeChecker().getSymbolAtLocation(expression);
   if (symbol === undefined) {
     return false;
@@ -298,6 +284,74 @@ function getConfigArgPosition(expression: ts.Expression): number {
   return 1;
 }
 
+function transformVariableDeclaration(program: ts.Program, node: ts.VariableDeclaration): ts.VariableDeclaration {
+  if (!node.initializer || !ts.isCallExpression(node.initializer)) return node;
+
+  const expression = node.initializer.expression;
+  if (ts.isPropertyAccessExpression(expression)) {
+    if (!expressionIsUsingAngularImportedSymbol(program, expression.expression)) {
+      return node;
+    }
+  } else if (!expressionIsUsingAngularImportedSymbol(program, expression)) {
+    return node;
+  }
+
+  return ts.factory.updateVariableDeclaration(
+    node,
+    node.name,
+    node.exclamationToken,
+    node.type,
+    insertDebugNameIntoCallExpression(node.initializer, node.name.getText()),
+  );
+}
+
+function transformPropertyAssignment(program: ts.Program, node: ts.ExpressionStatement & {
+  expression: ts.BinaryExpression & {right: ts.CallExpression; left: ts.PropertyAccessExpression};
+}): ts.ExpressionStatement {
+  const expression = node.expression.right.expression;
+  if (ts.isPropertyAccessExpression(expression)) {
+    if (!expressionIsUsingAngularImportedSymbol(program, expression.expression)) {
+      return node;
+    }
+  } else if (!expressionIsUsingAngularImportedSymbol(program, expression)) {
+    return node;
+  }
+
+  return ts.factory.updateExpressionStatement(
+    node,
+    ts.factory.createBinaryExpression(
+      node.expression.left,
+      node.expression.operatorToken,
+      insertDebugNameIntoCallExpression(
+        node.expression.right,
+        node.expression.left.name.getText(),
+      ),
+    ),
+  );
+}
+
+function transformPropertyDeclaration(program: ts.Program, node: ts.PropertyDeclaration): ts.PropertyDeclaration {
+  if (!node.initializer || !ts.isCallExpression(node.initializer)) return node;
+
+  const expression = node.initializer.expression;
+  if (ts.isPropertyAccessExpression(expression)) {
+    if (!expressionIsUsingAngularImportedSymbol(program, expression.expression)) {
+      return node;
+    }
+  } else if (!expressionIsUsingAngularImportedSymbol(program, expression)) {
+    return node;
+  }
+
+  return ts.factory.updatePropertyDeclaration(
+    node,
+    node.modifiers,
+    node.name,
+    node.questionToken,
+    node.type,
+    insertDebugNameIntoCallExpression(node.initializer, node.name.getText()),
+  );
+}
+
 
 /**
  * 
@@ -364,44 +418,16 @@ export function signalMetadataTransform(program: ts.Program) {
   return (context: ts.TransformationContext) =>
     (rootNode: ts.Node) => {
       const visit: ts.Visitor = (node) => {
-        // Skip node if it's not an expression that uses an Angular imported symbol
-        if (!expressionIsUsingAngularImportedSymbol(program, node)) {
-          return ts.visitEachChild(node, visit, context);
-        }
-
         if (isVariableDeclarationCase(node)) {
-          return ts.factory.updateVariableDeclaration(
-            node,
-            node.name,
-            node.exclamationToken,
-            node.type,
-            insertDebugNameIntoCallExpression(node.initializer, node.name.getText()),
-          );
+          return transformVariableDeclaration(program, node);
         }
 
         if (isPropertyAssignmentCase(node)) {
-          return ts.factory.updateExpressionStatement(
-            node,
-            ts.factory.createBinaryExpression(
-              node.expression.left,
-              node.expression.operatorToken,
-              insertDebugNameIntoCallExpression(
-                node.expression.right,
-                node.expression.left.name.getText(),
-              ),
-            ),
-          );
+          return transformPropertyAssignment(program, node);
         }
 
         if (isPropertyDeclarationCase(node)) {
-          return ts.factory.updatePropertyDeclaration(
-            node,
-            node.modifiers,
-            node.name,
-            node.questionToken,
-            node.type,
-            insertDebugNameIntoCallExpression(node.initializer, node.name.getText()),
-          );
+          return transformPropertyDeclaration(program, node);
         }
 
         return ts.visitEachChild(node, visit, context);
