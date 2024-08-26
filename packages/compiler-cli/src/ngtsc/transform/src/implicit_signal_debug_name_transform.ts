@@ -143,30 +143,35 @@ function isVariableDeclarationCase(
 function isPropertyAssignmentCase(node: ts.Node): node is ts.ExpressionStatement & {
   expression: ts.BinaryExpression & {right: ts.CallExpression; left: ts.PropertyAccessExpression};
 } {
-  if (ts.isExpressionStatement(node) && ts.isBinaryExpression(node.expression)) {
-    const binaryExpression = node.expression;
-
-    if (binaryExpression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
-      return false;
-    }
-
-    if (!ts.isCallExpression(binaryExpression.right)) {
-      return false;
-    }
-
-    if (!ts.isPropertyAccessExpression(binaryExpression.left)) {
-      return false;
-    }
-
-    let expression = binaryExpression.right.expression;
-
-    if (ts.isPropertyAccessExpression(expression)) {
-      expression = expression.expression;
-    }
-
-    return ts.isIdentifier(expression) && isSignalFunction(expression);
+  if (!ts.isExpressionStatement(node)) {
+    return false;
   }
-  return false;
+
+  if (!ts.isBinaryExpression(node.expression)) {
+    return false;
+  }
+
+  const binaryExpression = node.expression;
+
+  if (binaryExpression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) {
+    return false;
+  }
+
+  if (!ts.isCallExpression(binaryExpression.right)) {
+    return false;
+  }
+
+  if (!ts.isPropertyAccessExpression(binaryExpression.left)) {
+    return false;
+  }
+
+  let expression = binaryExpression.right.expression;
+
+  if (ts.isPropertyAccessExpression(expression)) {
+    expression = expression.expression;
+  }
+
+  return ts.isIdentifier(expression) && isSignalFunction(expression);
 }
 
 /**
@@ -209,7 +214,7 @@ function isPropertyDeclarationCase(
  * const mySignal = signal(123); // expressionIsUsingAngularImportedSymbol === true
  * ```
  */
-function expressionIsUsingAngularImportedSymbol(program: ts.Program, expression: ts.Expression) {
+function expressionIsUsingAngularImportedSymbol(program: ts.Program, expression: ts.Expression): boolean {
   const symbol = program.getTypeChecker().getSymbolAtLocation(expression);
   if (symbol === undefined) {
     return false;
@@ -247,7 +252,7 @@ function expressionIsUsingAngularImportedSymbol(program: ts.Program, expression:
   return importDeclaration.moduleSpecifier.text === '@angular/core';
 }
 
-function isSignalFunction(expression: ts.Identifier) {
+function isSignalFunction(expression: ts.Identifier): boolean {
   const text = expression.text;
 
   const signalFunction = new Set([
@@ -414,7 +419,7 @@ function transformPropertyDeclaration(program: ts.Program, node: ts.PropertyDecl
  * 3. Insert the debugName property into the config object of the signal function
  * 
  */
-export function signalMetadataTransform(program: ts.Program) {
+export function signalMetadataTransform(program: ts.Program): (context: ts.TransformationContext) => (rootNode: ts.Node) => ts.Node | undefined {
   return (context: ts.TransformationContext) =>
     (rootNode: ts.Node) => {
       const visit: ts.Visitor = (node) => {
