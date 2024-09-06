@@ -16,8 +16,16 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
-import {NavigationEnd, NavigationSkipped, Router, RouterLink, RouterOutlet} from '@angular/router';
-import {filter, map, skip} from 'rxjs/operators';
+import {
+  createUrlTreeFromSnapshot,
+  NavigationEnd,
+  NavigationSkipped,
+  Router,
+  RouterLink,
+  RouterOutlet,
+  RoutesRecognized,
+} from '@angular/router';
+import {filter, map, skip, switchMap} from 'rxjs/operators';
 import {
   CookiePopup,
   getActivatedRouteSnapshotFromRouter,
@@ -105,9 +113,24 @@ export class AppComponent implements OnInit {
   private focusFirstHeadingOnRouteChange(): void {
     this.router.events
       .pipe(
-        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-        // Skip first emission, cause on the initial load we would like to `Skip to main content` popup when it's focused
-        skip(1),
+        filter((e): e is RoutesRecognized => e instanceof RoutesRecognized),
+        filter((e) => {
+          // do not set focus when only fragments or queryParams change
+          const tree = createUrlTreeFromSnapshot(e.state.root, []);
+          return this.router.isActive(tree, {
+            paths: 'exact',
+            matrixParams: 'exact',
+            fragment: 'ignored',
+            queryParams: 'ignored',
+          });
+        }),
+        switchMap(() => {
+          return this.router.events.pipe(
+            filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+            // Skip first emission, cause on the initial load we would like to `Skip to main content` popup when it's focused
+            skip(1),
+          );
+        }),
       )
       .subscribe(() => {
         this.focusFirstHeading();
