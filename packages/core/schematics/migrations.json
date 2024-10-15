@@ -9,6 +9,11 @@
       "version": "19.0.0",
       "description": "Updates ExperimentalPendingTasks to PendingTasks",
       "factory": "./bundles/pending-tasks#migrate"
+    },
+    "http-xhr-backend": {
+      "version": "19.0.0",
+      "description": "Updates provideHttpClient to add withXhr when the XhrBackend was used",
+      "factory": "./bundles/http-xhr-backend#migrate"
     }
   }
 }
