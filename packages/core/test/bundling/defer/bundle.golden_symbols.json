@@ -2154,6 +2154,9 @@
     "name": "init_view2"
   },
   {
+    "name": "init_view3"
+  },
+  {
     "name": "init_view_container_ref"
   },
   {
@@ -2443,6 +2446,9 @@
   },
   {
     "name": "refreshView"
+  },
+  {
+    "name": "registerAfterRendersInView"
   },
   {
     "name": "registerPostOrderHooks"

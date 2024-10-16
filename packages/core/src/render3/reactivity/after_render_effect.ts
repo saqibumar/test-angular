@@ -23,19 +23,21 @@ import {
   ChangeDetectionScheduler,
   NotificationSource,
 } from '../../change_detection/scheduling/zoneless_scheduling';
+import {assertInInjectionContext} from '../../di/contextual';
 import {Injector} from '../../di/injector';
 import {inject} from '../../di/injector_compatibility';
+import {DestroyRef} from '../../linker/destroy_ref';
+import {AfterRenderPhase, type AfterRenderRef} from '../after_render/api';
+import {NOOP_AFTER_RENDER_REF, type AfterRenderOptions} from '../after_render/hooks';
 import {
   AFTER_RENDER_PHASES,
   AfterRenderImpl,
   AfterRenderManager,
   AfterRenderSequence,
 } from '../after_render/manager';
-import {AfterRenderPhase, type AfterRenderRef} from '../after_render/api';
-import {NOOP_AFTER_RENDER_REF, type AfterRenderOptions} from '../after_render/hooks';
-import {DestroyRef} from '../../linker/destroy_ref';
+import {LView} from '../interfaces/view';
+import {ViewContext} from '../view_context';
 import {assertNotInReactiveContext} from './asserts';
-import {assertInInjectionContext} from '../../di/contextual';
 
 const NOT_SET = Symbol('NOT_SET');
 const EMPTY_CLEANUP_SET = new Set<() => void>();
@@ -173,12 +175,13 @@ class AfterRenderEffectSequence extends AfterRenderSequence {
   constructor(
     impl: AfterRenderImpl,
     effectHooks: Array<AfterRenderPhaseEffectHook | undefined>,
+    view: LView | undefined,
     readonly scheduler: ChangeDetectionScheduler,
     destroyRef: DestroyRef,
   ) {
     // Note that we also initialize the underlying `AfterRenderSequence` hooks to `undefined` and
     // populate them as we create reactive nodes below.
-    super(impl, [undefined, undefined, undefined, undefined], false, destroyRef);
+    super(impl, [undefined, undefined, undefined, undefined], view, false, destroyRef);
 
     // Setup a reactive node for each phase.
     for (const phase of AFTER_RENDER_PHASES) {
@@ -377,12 +380,15 @@ export function afterRenderEffect<E = never, W = never, M = never>(
     spec = {mixedReadWrite: callbackOrSpec as any};
   }
 
+  const viewContext = injector.get(ViewContext, null, {optional: true});
+
   const sequence = new AfterRenderEffectSequence(
     manager.impl,
     [spec.earlyRead, spec.write, spec.mixedReadWrite, spec.read] as AfterRenderPhaseEffectHook[],
+    viewContext?.view,
     scheduler,
     injector.get(DestroyRef),
   );
-  manager.impl.register(sequence);
+  manager.impl.queueRegistration(sequence);
   return sequence;
 }
