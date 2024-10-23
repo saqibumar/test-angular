@@ -80,7 +80,7 @@ export interface AnimationPlayer {
   setPosition(position: number): void;
   /**
    * Reports the current position of the animation.
-   * @returns A 0-based offset into the duration, in milliseconds.
+   * @returns A fractional value, reporting the position of the animation.
    */
   getPosition(): number;
   /**
