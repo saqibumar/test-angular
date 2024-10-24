@@ -80,7 +80,7 @@ export interface AnimationPlayer {
   setPosition(position: number): void;
   /**
    * Reports the current position of the animation.
-   * @returns A fractional value, reporting the position of the animation.
+   * @returns A fractional value, representing the progress through the animation.
    */
   getPosition(): number;
   /**
