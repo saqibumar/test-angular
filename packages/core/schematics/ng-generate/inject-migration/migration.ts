@@ -3,14 +3,13 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
 import {PendingChange, ChangeTracker} from '../../utils/change_tracker';
 import {
   analyzeFile,
-  getNodeIndentation,
   getSuperParameters,
   getConstructorUnusedParameters,
   hasGenerics,
@@ -20,6 +19,9 @@ import {
 } from './analysis';
 import {getAngularDecorators} from '../../utils/ng_decorators';
 import {getImportOfIdentifier} from '../../utils/typescript/imports';
+import {closestNode} from '../../utils/typescript/nodes';
+import {findUninitializedPropertiesToCombine} from './internal';
+import {getLeadingLineWhitespaceOfNode} from '../../utils/tsurge/helpers/ast/leading_space';
 
 /**
  * Placeholder used to represent expressions inside the AST.
@@ -30,13 +32,32 @@ const PLACEHOLDER = 'ɵɵngGeneratePlaceholderɵɵ';
 /** Options that can be used to configure the migration. */
 export interface MigrationOptions {
   /** Whether to generate code that keeps injectors backwards compatible. */
-  backwardsCompatibleConstructors: boolean;
+  backwardsCompatibleConstructors?: boolean;
 
   /** Whether to migrate abstract classes. */
-  migrateAbstractClasses: boolean;
+  migrateAbstractClasses?: boolean;
 
   /** Whether to make the return type of `@Optinal()` parameters to be non-nullable. */
-  nonNullableOptional: boolean;
+  nonNullableOptional?: boolean;
+
+  /**
+   * Internal-only option that determines whether the migration should try to move the
+   * initializers of class members from the constructor back into the member itself. E.g.
+   *
+   * ```
+   * // Before
+   * private foo;
+   *
+   * constructor(@Inject(BAR) private bar: Bar) {
+   *   this.foo = this.bar.getValue();
+   * }
+   *
+   * // After
+   * private bar = inject(BAR);
+   * private foo = this.bar.getValue();
+   * ```
+   */
+  _internalCombineMemberInitializers?: boolean;
 }
 
 /**
@@ -60,12 +81,44 @@ export function migrateFile(sourceFile: ts.SourceFile, options: MigrationOptions
   const printer = ts.createPrinter();
   const tracker = new ChangeTracker(printer);
 
-  analysis.classes.forEach((result) => {
+  analysis.classes.forEach(({node, constructor, superCall}) => {
+    let removedStatements: Set<ts.Statement> | null = null;
+
+    if (options._internalCombineMemberInitializers) {
+      findUninitializedPropertiesToCombine(node, constructor, localTypeChecker)?.forEach(
+        (initializer, property) => {
+          const statement = closestNode(initializer, ts.isStatement);
+
+          if (!statement) {
+            return;
+          }
+
+          const newProperty = ts.factory.createPropertyDeclaration(
+            cloneModifiers(property.modifiers),
+            cloneName(property.name),
+            property.questionToken,
+            property.type,
+            initializer,
+          );
+          tracker.replaceText(
+            statement.getSourceFile(),
+            statement.getFullStart(),
+            statement.getFullWidth(),
+            '',
+          );
+          tracker.replaceNode(property, newProperty);
+          removedStatements = removedStatements || new Set();
+          removedStatements.add(statement);
+        },
+      );
+    }
+
     migrateClass(
-      result.node,
-      result.constructor,
-      result.superCall,
+      node,
+      constructor,
+      superCall,
       options,
+      removedStatements,
       localTypeChecker,
       printer,
       tracker,
@@ -88,6 +141,7 @@ export function migrateFile(sourceFile: ts.SourceFile, options: MigrationOptions
  * @param constructor Reference to the class' constructor node.
  * @param superCall Reference to the constructor's `super()` call, if any.
  * @param options Options used to configure the migration.
+ * @param removedStatements Statements that have been removed from the constructor already.
  * @param localTypeChecker Type checker set up for the specific file.
  * @param printer Printer used to output AST nodes as strings.
  * @param tracker Object keeping track of the changes made to the file.
@@ -97,6 +151,7 @@ function migrateClass(
   constructor: ts.ConstructorDeclaration,
   superCall: ts.CallExpression | null,
   options: MigrationOptions,
+  removedStatements: Set<ts.Statement> | null,
   localTypeChecker: ts.TypeChecker,
   printer: ts.Printer,
   tracker: ChangeTracker,
@@ -110,13 +165,21 @@ function migrateClass(
   }
 
   const sourceFile = node.getSourceFile();
-  const unusedParameters = getConstructorUnusedParameters(constructor, localTypeChecker);
+  const unusedParameters = getConstructorUnusedParameters(
+    constructor,
+    localTypeChecker,
+    removedStatements,
+  );
   const superParameters = superCall
     ? getSuperParameters(constructor, superCall, localTypeChecker)
     : null;
-  const memberIndentation = getNodeIndentation(node.members[0]);
-  const innerReference = superCall || constructor.body?.statements[0] || constructor;
-  const innerIndentation = getNodeIndentation(innerReference);
+  const memberIndentation = getLeadingLineWhitespaceOfNode(node.members[0]);
+  const removedStatementCount = removedStatements?.size || 0;
+  const innerReference =
+    superCall ||
+    constructor.body?.statements.find((statement) => !removedStatements?.has(statement)) ||
+    constructor;
+  const innerIndentation = getLeadingLineWhitespaceOfNode(innerReference);
   const propsToAdd: string[] = [];
   const prependToConstructor: string[] = [];
   const afterSuper: string[] = [];
@@ -152,10 +215,7 @@ function migrateClass(
     }
   }
 
-  if (
-    !options.backwardsCompatibleConstructors &&
-    (!constructor.body || constructor.body.statements.length === 0)
-  ) {
+  if (canRemoveConstructor(options, constructor, removedStatementCount, superCall)) {
     // Drop the constructor if it was empty.
     removedMembers.add(constructor);
     tracker.replaceText(sourceFile, constructor.getFullStart(), constructor.getFullWidth(), '');
@@ -257,12 +317,17 @@ function migrateParameter(
   // If the parameter declares a property, we need to declare it (e.g. `private foo: Foo`).
   if (declaresProp) {
     const prop = ts.factory.createPropertyDeclaration(
-      node.modifiers?.filter((modifier) => {
-        // Strip out the DI decorators, as well as `public` which is redundant.
-        return !ts.isDecorator(modifier) && modifier.kind !== ts.SyntaxKind.PublicKeyword;
-      }),
+      cloneModifiers(
+        node.modifiers?.filter((modifier) => {
+          // Strip out the DI decorators, as well as `public` which is redundant.
+          return !ts.isDecorator(modifier) && modifier.kind !== ts.SyntaxKind.PublicKeyword;
+        }),
+      ),
       name,
-      undefined,
+      // Don't add the question token to private properties since it won't affect interface implementation.
+      node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
+        ? undefined
+        : node.questionToken,
       // We can't initialize the property if it's referenced within a `super` call.
       // See the logic further below for the initialization.
       usedInSuper ? node.type : undefined,
@@ -458,6 +523,18 @@ function migrateInjectDecorator(
         injectedType = arrowFn.body.getText();
       }
     }
+  } else if (
+    // Pass the type for cases like `@Inject(FOO_TOKEN) foo: Foo`, because:
+    // 1. It guarantees that the type stays the same as before.
+    // 2. Avoids leaving unused imports behind.
+    // We only do this for type references since the `@Inject` pattern above is fairly common and
+    // apps don't necessarily type their injection tokens correctly, whereas doing it for literal
+    // types will add a lot of noise to the generated code.
+    type &&
+    (ts.isTypeReferenceNode(type) ||
+      (ts.isUnionTypeNode(type) && type.types.some(ts.isTypeReferenceNode)))
+  ) {
+    typeArguments = [type];
   }
 
   return {injectedType, typeArguments};
@@ -545,4 +622,66 @@ function replaceNodePlaceholder(
 ): string {
   const result = printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
   return result.replace(PLACEHOLDER, replacement);
+}
+
+/**
+ * Clones an optional array of modifiers. Can be useful to
+ * strip the comments from a node with modifiers.
+ */
+function cloneModifiers(modifiers: ts.ModifierLike[] | ts.NodeArray<ts.ModifierLike> | undefined) {
+  return modifiers?.map((modifier) => {
+    return ts.isDecorator(modifier)
+      ? ts.factory.createDecorator(modifier.expression)
+      : ts.factory.createModifier(modifier.kind);
+  });
+}
+
+/**
+ * Clones the name of a property. Can be useful to strip away
+ * the comments of a property without modifiers.
+ */
+function cloneName(node: ts.PropertyName): ts.PropertyName {
+  switch (node.kind) {
+    case ts.SyntaxKind.Identifier:
+      return ts.factory.createIdentifier(node.text);
+    case ts.SyntaxKind.StringLiteral:
+      return ts.factory.createStringLiteral(node.text, node.getText()[0] === `'`);
+    case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
+      return ts.factory.createNoSubstitutionTemplateLiteral(node.text, node.rawText);
+    case ts.SyntaxKind.NumericLiteral:
+      return ts.factory.createNumericLiteral(node.text);
+    case ts.SyntaxKind.ComputedPropertyName:
+      return ts.factory.createComputedPropertyName(node.expression);
+    case ts.SyntaxKind.PrivateIdentifier:
+      return ts.factory.createPrivateIdentifier(node.text);
+    default:
+      return node;
+  }
+}
+
+/**
+ * Determines whether it's safe to delete a class constructor.
+ * @param options Options used to configure the migration.
+ * @param constructor Node representing the constructor.
+ * @param removedStatementCount Number of statements that were removed by the migration.
+ * @param superCall Node representing the `super()` call within the constructor.
+ */
+function canRemoveConstructor(
+  options: MigrationOptions,
+  constructor: ts.ConstructorDeclaration,
+  removedStatementCount: number,
+  superCall: ts.CallExpression | null,
+): boolean {
+  if (options.backwardsCompatibleConstructors) {
+    return false;
+  }
+
+  const statementCount = constructor.body
+    ? constructor.body.statements.length - removedStatementCount
+    : 0;
+
+  return (
+    statementCount === 0 ||
+    (statementCount === 1 && superCall !== null && superCall.arguments.length === 0)
+  );
 }

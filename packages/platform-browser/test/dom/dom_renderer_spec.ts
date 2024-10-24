@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {Component, Renderer2, ViewEncapsulation} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
@@ -98,13 +98,12 @@ describe('DefaultDomRendererV2', () => {
   });
 
   describe('removeChild', () => {
-    it('should not error when removing a child with a different parent than given', () => {
-      const savedParent = document.createElement('div');
-      const realParent = document.createElement('div');
+    it('should not error when removing a child without passing a parent', () => {
+      const parent = document.createElement('div');
       const child = document.createElement('div');
 
-      realParent.appendChild(child);
-      renderer.removeChild(savedParent, child);
+      parent.appendChild(child);
+      renderer.removeChild(null, child);
     });
   });
 
@@ -297,6 +296,7 @@ async function styleCount(
   template: `<div class="emulated"></div>`,
   styles: [`.emulated { color: blue; }`],
   encapsulation: ViewEncapsulation.Emulated,
+  standalone: false,
 })
 class CmpEncapsulationEmulated {}
 
@@ -305,6 +305,7 @@ class CmpEncapsulationEmulated {}
   template: `<div class="none"></div>`,
   styles: [`.none { color: lime; }`],
   encapsulation: ViewEncapsulation.None,
+  standalone: false,
 })
 class CmpEncapsulationNone {}
 
@@ -313,6 +314,7 @@ class CmpEncapsulationNone {}
   template: `<div class="shadow"></div><cmp-emulated></cmp-emulated><cmp-none></cmp-none>`,
   styles: [`.shadow { color: red; }`],
   encapsulation: ViewEncapsulation.ShadowDom,
+  standalone: false,
 })
 class CmpEncapsulationShadow {}
 
@@ -323,10 +325,15 @@ class CmpEncapsulationShadow {}
     <cmp-emulated></cmp-emulated>
     <cmp-none></cmp-none>
   `,
+  standalone: false,
 })
 export class SomeApp {}
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestCmp {
   constructor(public renderer: Renderer2) {}
 }
@@ -340,6 +347,7 @@ class TestCmp {
     <cmp-none *ngIf="!componentOneInstanceHidden && !showEmulatedComponents"></cmp-none>
     <cmp-none *ngIf="!componentTwoInstanceHidden && !showEmulatedComponents"></cmp-none>
   `,
+  standalone: false,
 })
 export class SomeAppForCleanUp {
   componentOneInstanceHidden = false;

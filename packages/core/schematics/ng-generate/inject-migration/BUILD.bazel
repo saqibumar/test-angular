@@ -1,4 +1,4 @@
-load("//tools:defaults.bzl", "esbuild", "ts_library")
+load("//tools:defaults.bzl", "ts_library")
 
 package(
     default_visibility = [
@@ -19,20 +19,9 @@ ts_library(
     tsconfig = "//packages/core/schematics:tsconfig.json",
     deps = [
         "//packages/core/schematics/utils",
+        "//packages/core/schematics/utils/tsurge/helpers/ast",
         "@npm//@angular-devkit/schematics",
         "@npm//@types/node",
         "@npm//typescript",
     ],
-)
-
-esbuild(
-    name = "bundle",
-    entry_point = ":index.ts",
-    external = [
-        "@angular-devkit/*",
-        "typescript",
-    ],
-    format = "cjs",
-    platform = "node",
-    deps = [":inject-migration"],
 )

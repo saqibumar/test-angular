@@ -3,31 +3,44 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import assert from 'assert';
 import ts from 'typescript';
 
-import {MigrationHost} from '../migration_host';
 import {ConvertInputPreparation} from './prepare_and_check';
-import {DecoratorInputTransform} from '../../../../../../compiler-cli/src/ngtsc/metadata';
+import {DecoratorInputTransform} from '@angular/compiler-cli/src/ngtsc/metadata';
+import {ImportManager} from '@angular/compiler-cli/src/ngtsc/translator';
+import {removeFromUnionIfPossible} from '../utils/remove_from_union';
+import {MigrationResult} from '../result';
+import {ProgramInfo, projectFile, Replacement, TextUpdate} from '../../../../utils/tsurge';
+import {insertPrecedingLine} from '../../../../utils/tsurge/helpers/ast/insert_preceding_line';
+import {cutStringToLineLimit} from '../../../../utils/tsurge/helpers/string_manipulation/cut_string_line_length';
 
-const printer = ts.createPrinter({newLine: ts.NewLineKind.LineFeed});
+// TODO: Consider initializations inside the constructor. Those are not migrated right now
+// though, as they are writes.
 
 /**
- *
  * Converts an `@Input()` property declaration to a signal input.
  *
- * @returns The transformed property declaration, printed as a string.
+ * @returns Replacements for converting the input.
  */
 export function convertToSignalInput(
-  host: MigrationHost,
   node: ts.PropertyDeclaration,
-  {resolvedMetadata: metadata, resolvedType, isResolvedTypeCheckable}: ConvertInputPreparation,
+  {
+    resolvedMetadata: metadata,
+    resolvedType,
+    preferShorthandIfPossible,
+    originalInputDecorator,
+    initialValue,
+    leadingTodoText,
+  }: ConvertInputPreparation,
+  info: ProgramInfo,
   checker: ts.TypeChecker,
-): string {
-  let initialValue = node.initializer;
+  importManager: ImportManager,
+  result: MigrationResult,
+): Replacement[] {
   let optionsLiteral: ts.ObjectLiteralExpression | null = null;
 
   // We need an options array for the input because:
@@ -44,16 +57,40 @@ export function convertToSignalInput(
       );
     }
     if (metadata.transform !== null) {
-      properties.push(
-        extractTransformOfInput(metadata.transform, resolvedType, isResolvedTypeCheckable, checker),
-      );
+      const transformRes = extractTransformOfInput(metadata.transform, resolvedType, checker);
+      properties.push(transformRes.node);
+
+      // Propagate TODO if one was requested from the transform extraction/validation.
+      if (transformRes.leadingTodoText !== null) {
+        leadingTodoText =
+          (leadingTodoText ? `${leadingTodoText} ` : '') + transformRes.leadingTodoText;
+      }
     }
 
     optionsLiteral = ts.factory.createObjectLiteralExpression(properties);
   }
 
-  const strictPropertyInitialization =
-    !!host.tsOptions.strict || !!host.tsOptions.strictPropertyInitialization;
+  // The initial value is `undefined` or none is present:
+  //    - We may be able to use the `input()` shorthand
+  //    - or we use an explicit `undefined` initial value.
+  if (initialValue === undefined) {
+    // Shorthand not possible, so explicitly add `undefined`.
+    if (preferShorthandIfPossible === null) {
+      initialValue = ts.factory.createIdentifier('undefined');
+    } else {
+      resolvedType = preferShorthandIfPossible.originalType;
+
+      // When using the `input()` shorthand, try cutting of `undefined` from potential
+      // union types. `undefined` will be automatically included in the type.
+      if (ts.isUnionTypeNode(resolvedType)) {
+        resolvedType = removeFromUnionIfPossible(
+          resolvedType,
+          (t) => t.kind !== ts.SyntaxKind.UndefinedKeyword,
+        );
+      }
+    }
+  }
+
   const inputArgs: ts.Expression[] = [];
   const typeArguments: ts.TypeNode[] = [];
 
@@ -61,27 +98,15 @@ export function convertToSignalInput(
     typeArguments.push(resolvedType);
 
     if (metadata.transform !== null) {
-      typeArguments.push(metadata.transform.type.node);
+      // Note: The TCB code generation may use the same type node and attach
+      // synthetic comments for error reporting. We remove those explicitly here.
+      typeArguments.push(ts.setSyntheticTrailingComments(metadata.transform.type.node, undefined));
     }
-  }
-
-  // If we have no initial value but strict property initialization is enabled, we
-  // need to add an explicit value. Alternatively, if we have an explicit type, we
-  // need to add an explicit initial value as per the API signature of `input()`.
-  if (initialValue === undefined && (strictPropertyInitialization || resolvedType !== undefined)) {
-    // TODO: Consider initializations inside the constructor. Those are not migrated right now
-    // though, as they are writes.
-
-    // TODO: We can use the `input()` shorthand if there is a question mark?
-    // We can assume `undefined` is part of the type already, either already was included, or
-    // we added synthetically as part of the preparation.
-    initialValue = ts.factory.createIdentifier('undefined');
   }
 
   // Always add an initial value when the input is optional, and we have one, or we need one
   // to be able to pass options as the second argument.
   if (!metadata.required && (initialValue !== undefined || optionsLiteral !== null)) {
-    // TODO: undefined `input()` shorthand support!
     inputArgs.push(initialValue ?? ts.factory.createIdentifier('undefined'));
   }
 
@@ -89,11 +114,11 @@ export function convertToSignalInput(
     inputArgs.push(optionsLiteral);
   }
 
-  const inputFnRef =
-    metadata.inputDecoratorRef !== null && ts.isPropertyAccessExpression(metadata.inputDecoratorRef)
-      ? ts.factory.createPropertyAccessExpression(metadata.inputDecoratorRef.expression, 'input')
-      : ts.factory.createIdentifier('input');
-
+  const inputFnRef = importManager.addImport({
+    exportModuleSpecifier: '@angular/core',
+    exportSymbolName: 'input',
+    requestedFile: node.getSourceFile(),
+  });
   const inputInitializerFn = metadata.required
     ? ts.factory.createPropertyAccessExpression(inputFnRef, 'required')
     : inputFnRef;
@@ -104,19 +129,51 @@ export function convertToSignalInput(
     inputArgs,
   );
 
-  // TODO:
-  //   - modifiers (but private does not work)
-  //   - preserve custom decorators etc.
+  let modifiersWithoutInputDecorator =
+    node.modifiers?.filter((m) => m !== originalInputDecorator.node) ?? [];
 
-  const result = ts.factory.createPropertyDeclaration(
-    undefined,
+  // Add `readonly` to all new signal input declarations.
+  if (!modifiersWithoutInputDecorator?.some((s) => s.kind === ts.SyntaxKind.ReadonlyKeyword)) {
+    modifiersWithoutInputDecorator.push(ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword));
+  }
+
+  const newNode = ts.factory.createPropertyDeclaration(
+    modifiersWithoutInputDecorator,
     node.name,
     undefined,
     undefined,
     inputInitializer,
   );
 
-  return printer.printNode(ts.EmitHint.Unspecified, result, node.getSourceFile());
+  const newPropertyText = result.printer.printNode(
+    ts.EmitHint.Unspecified,
+    newNode,
+    node.getSourceFile(),
+  );
+
+  const replacements: Replacement[] = [];
+
+  if (leadingTodoText !== null) {
+    replacements.push(
+      insertPrecedingLine(node, info, '// TODO: Notes from signal input migration:'),
+      ...cutStringToLineLimit(leadingTodoText, 70).map((line) =>
+        insertPrecedingLine(node, info, `//  ${line}`),
+      ),
+    );
+  }
+
+  replacements.push(
+    new Replacement(
+      projectFile(node.getSourceFile(), info),
+      new TextUpdate({
+        position: node.getStart(),
+        end: node.getEnd(),
+        toInsert: newPropertyText,
+      }),
+    ),
+  );
+
+  return replacements;
 }
 
 /**
@@ -126,17 +183,20 @@ export function convertToSignalInput(
 function extractTransformOfInput(
   transform: DecoratorInputTransform,
   resolvedType: ts.TypeNode | undefined,
-  isResolvedTypeCheckable: boolean,
   checker: ts.TypeChecker,
-): ts.PropertyAssignment {
+): {node: ts.PropertyAssignment; leadingTodoText: string | null} {
   assert(ts.isExpression(transform.node), `Expected transform to be an expression.`);
   let transformFn: ts.Expression = transform.node;
+  let leadingTodoText: string | null = null;
 
   // If there is an explicit type, check if the transform return type actually works.
   // In some cases, the transform function is not compatible because with decorator inputs,
   // those were not checked. We cast the transform to `any` and add a TODO.
-  // TODO: Insert a TODO and capture this in the design doc.
-  if (resolvedType !== undefined && isResolvedTypeCheckable) {
+  // TODO: Capture this in the design doc.
+  if (resolvedType !== undefined && !ts.isSyntheticExpression(resolvedType)) {
+    // Note: If the type is synthetic, we cannot check, and we accept that in the worst case
+    // we will create code that is not necessarily compiling. This is unlikely, but notably
+    // the errors would be correct and valuable.
     const transformType = checker.getTypeAtLocation(transform.node);
     const transformSignature = transformType.getCallSignatures()[0];
     assert(transformSignature !== undefined, 'Expected transform to be an invoke-able.');
@@ -147,6 +207,9 @@ function extractTransformOfInput(
         checker.getTypeFromTypeNode(resolvedType),
       )
     ) {
+      leadingTodoText =
+        'Input type is incompatible with transform. The migration added an `any` cast. ' +
+        'This worked previously because Angular was unable to check transforms.';
       transformFn = ts.factory.createAsExpression(
         ts.factory.createParenthesizedExpression(transformFn),
         ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
@@ -154,5 +217,8 @@ function extractTransformOfInput(
     }
   }
 
-  return ts.factory.createPropertyAssignment('transform', transformFn);
+  return {
+    node: ts.factory.createPropertyAssignment('transform', transformFn),
+    leadingTodoText,
+  };
 }

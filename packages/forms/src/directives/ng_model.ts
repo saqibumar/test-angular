@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -162,6 +162,7 @@ const resolvedPromise = (() => Promise.resolve())();
   selector: '[ngModel]:not([formControlName]):not([formControl])',
   providers: [formControlBinding],
   exportAs: 'ngModel',
+  standalone: false,
 })
 export class NgModel extends NgControl implements OnChanges, OnDestroy {
   public override readonly control: FormControl = new FormControl();

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -96,6 +96,11 @@ describe('parser', () => {
       checkAction('true || false');
       checkAction('null ?? 0');
       checkAction('null ?? undefined ?? 0');
+    });
+
+    it('should parse typeof expression', () => {
+      checkAction(`typeof {} === "object"`);
+      checkAction('(!(typeof {} === "number"))', '!typeof {} === "number"');
     });
 
     it('should parse grouped expressions', () => {

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {AbsoluteSourceSpan} from '@angular/compiler';
@@ -86,6 +86,10 @@ class ExpressionSourceHumanizer extends e.RecursiveAstVisitor implements t.Visit
   override visitPrefixNot(ast: e.PrefixNot) {
     this.recordAst(ast);
     super.visitPrefixNot(ast, null);
+  }
+  override visitTypeofExpresion(ast: e.TypeofExpression) {
+    this.recordAst(ast);
+    super.visitTypeofExpresion(ast, null);
   }
   override visitPropertyRead(ast: e.PropertyRead) {
     this.recordAst(ast);

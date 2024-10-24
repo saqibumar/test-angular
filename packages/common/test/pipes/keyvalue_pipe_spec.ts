@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {KeyValuePipe} from '@angular/common';
@@ -59,6 +59,13 @@ describe('KeyValuePipe', () => {
         {key: '3', value: 1},
         {key: 'a', value: 1},
         {key: 'b', value: 1},
+      ]);
+    });
+    it('should not order by alpha when compareFn is null', () => {
+      const pipe = new KeyValuePipe(defaultKeyValueDiffers);
+      expect(pipe.transform({'b': 1, 'a': 1}, null)).toEqual([
+        {key: 'b', value: 1},
+        {key: 'a', value: 1},
       ]);
     });
     it('should reorder when compareFn changes', () => {
@@ -161,6 +168,21 @@ describe('KeyValuePipe', () => {
       ).toEqual([
         {key: {id: 0}, value: 1},
         {key: {id: 1}, value: 1},
+      ]);
+    });
+    it('should not order by alpha when compareFn is null', () => {
+      const pipe = new KeyValuePipe(defaultKeyValueDiffers);
+      expect(
+        pipe.transform(
+          new Map([
+            ['b', 1],
+            ['a', 1],
+          ]),
+          null,
+        ),
+      ).toEqual([
+        {key: 'b', value: 1},
+        {key: 'a', value: 1},
       ]);
     });
     it('should reorder when compareFn changes', () => {

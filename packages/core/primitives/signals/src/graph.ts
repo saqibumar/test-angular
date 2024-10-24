@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // Required as the signals library is in a separate package, so we need to explicitly ensure the
@@ -179,6 +179,11 @@ export interface ReactiveNode {
    * Called when a signal is read within this consumer.
    */
   consumerOnSignalRead(node: unknown): void;
+
+  /**
+   * A debug name for the reactive node. Used in Angular DevTools to identify the node.
+   */
+  debugName?: string;
 }
 
 interface ConsumerNode extends ReactiveNode {
@@ -275,16 +280,14 @@ export function producerUpdateValueVersion(node: ReactiveNode): void {
   if (!node.producerMustRecompute(node) && !consumerPollProducersForChange(node)) {
     // None of our producers report a change since the last time they were read, so no
     // recomputation of our value is necessary, and we can consider ourselves clean.
-    node.dirty = false;
-    node.lastCleanEpoch = epoch;
+    producerMarkClean(node);
     return;
   }
 
   node.producerRecomputeValue(node);
 
   // After recomputing the value, we're no longer dirty.
-  node.dirty = false;
-  node.lastCleanEpoch = epoch;
+  producerMarkClean(node);
 }
 
 /**
@@ -321,6 +324,11 @@ export function consumerMarkDirty(node: ReactiveNode): void {
   node.dirty = true;
   producerNotifyConsumers(node);
   node.consumerMarkedDirty?.(node);
+}
+
+export function producerMarkClean(node: ReactiveNode): void {
+  node.dirty = false;
+  node.lastCleanEpoch = epoch;
 }
 
 /**

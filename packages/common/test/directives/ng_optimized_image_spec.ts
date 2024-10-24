@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {CommonModule, DOCUMENT, IMAGE_CONFIG, ImageConfig} from '@angular/common';
@@ -682,6 +682,7 @@ describe('Image directive', () => {
             [disableOptimizedSrcset]="disableOptimizedSrcset"
             [loaderParams]="loaderParams"
           />`,
+          standalone: false,
         })
         class TestComponent {
           width = 100;
@@ -722,6 +723,7 @@ describe('Image directive', () => {
           [loading]="loading"
           [sizes]="sizes"
         />`,
+        standalone: false,
       })
       class TestComponent {
         width = 100;
@@ -745,6 +747,7 @@ describe('Image directive', () => {
       @Component({
         selector: 'test-cmp',
         template: `<img [ngSrc]="bypassImage" width="400" height="600" />`,
+        standalone: false,
       })
       class TestComponent {
         rawImage = `javascript:alert("Hi there")`;
@@ -1027,7 +1030,7 @@ describe('Image directive', () => {
     it('should add default sizes value in fill mode', () => {
       setupTestingModule();
 
-      const template = '<img ngSrc="path/img.png" fill>';
+      const template = '<img ngSrc="path/img.png" fill priority>';
 
       const fixture = createTestComponent(template);
       fixture.detectChanges();
@@ -1035,7 +1038,29 @@ describe('Image directive', () => {
       const img = nativeElement.querySelector('img')!;
       expect(img.getAttribute('sizes')).toBe('100vw');
     });
+    it('should add auto sizes to default in fill mode when lazy', () => {
+      setupTestingModule();
+
+      const template = '<img ngSrc="path/img.png" fill>';
+
+      const fixture = createTestComponent(template);
+      fixture.detectChanges();
+      const nativeElement = fixture.nativeElement as HTMLElement;
+      const img = nativeElement.querySelector('img')!;
+      expect(img.getAttribute('sizes')).toBe('auto, 100vw');
+    });
     it('should not overwrite sizes value in fill mode', () => {
+      setupTestingModule();
+
+      const template = '<img ngSrc="path/img.png" sizes="50vw" fill loading="eager">';
+
+      const fixture = createTestComponent(template);
+      fixture.detectChanges();
+      const nativeElement = fixture.nativeElement as HTMLElement;
+      const img = nativeElement.querySelector('img')!;
+      expect(img.getAttribute('sizes')).toBe('50vw');
+    });
+    it('should prepend "auto" to sizes in fill mode when lazy', () => {
       setupTestingModule();
 
       const template = '<img ngSrc="path/img.png" sizes="50vw" fill>';
@@ -1044,7 +1069,7 @@ describe('Image directive', () => {
       fixture.detectChanges();
       const nativeElement = fixture.nativeElement as HTMLElement;
       const img = nativeElement.querySelector('img')!;
-      expect(img.getAttribute('sizes')).toBe('50vw');
+      expect(img.getAttribute('sizes')).toBe('auto, 50vw');
     });
     it('should cause responsive srcset to be generated in fill mode', () => {
       setupTestingModule();
@@ -1715,6 +1740,7 @@ describe('Image directive', () => {
       @Component({
         selector: 'test-cmp',
         template: `<img [ngSrc]="ngSrc" width="300" height="300" />`,
+        standalone: false,
       })
       class TestComponent {
         ngSrc = `img.png`;
@@ -1737,6 +1763,7 @@ describe('Image directive', () => {
       @Component({
         selector: 'test-cmp',
         template: `<img [ngSrc]="ngSrc" width="300" height="300" sizes="100vw" />`,
+        standalone: false,
       })
       class TestComponent {
         ngSrc = `img.png`;
@@ -1801,6 +1828,7 @@ describe('Image directive', () => {
           [height]="height"
           [loaderParams]="params"
         />`,
+        standalone: false,
       })
       class TestComponent {
         ngSrc = `${IMG_BASE_URL}/img.png`;
@@ -1872,6 +1900,7 @@ describe('Image directive', () => {
           selector: 'test-cmp',
           template: '<img ngSrc="a.png" width="100" height="50" priority>',
           providers: [loaderWithPath('https://component.io')],
+          standalone: false,
         })
         class TestComponent {}
 
@@ -2022,10 +2051,55 @@ describe('Image directive', () => {
             `${IMG_BASE_URL}/img.png?w=300 3x`,
         );
       });
+      it('should automatically set a default sizes attribute when ngSrcset is used with a responsive srcset and is lazy', () => {
+        setupTestingModule({imageLoader});
+
+        const template = `
+           <img ngSrc="img.png" ngSrcset="100w, 200w, 300w" width="100" height="50">
+         `;
+        const fixture = createTestComponent(template);
+        fixture.detectChanges();
+
+        const nativeElement = fixture.nativeElement as HTMLElement;
+        const img = nativeElement.querySelector('img')!;
+        expect(img.src).toBe(`${IMG_BASE_URL}/img.png`);
+        expect(img.sizes).toBe(`auto, 100vw`);
+      });
+      it('should not automatically set a default sizes attribute when ngSrcset is used with a responsive srcset and is not lazy', () => {
+        setupTestingModule({imageLoader});
+
+        const template = `
+           <img ngSrc="img.png" ngSrcset="100w, 200w, 300w" width="100" height="50" priority>
+         `;
+        const fixture = createTestComponent(template);
+        fixture.detectChanges();
+
+        const nativeElement = fixture.nativeElement as HTMLElement;
+        const img = nativeElement.querySelector('img')!;
+        expect(img.src).toBe(`${IMG_BASE_URL}/img.png`);
+        expect(img.sizes).toBe('');
+      });
     });
 
     describe('sizes attribute', () => {
       it('should pass through the sizes attribute', () => {
+        setupTestingModule();
+
+        const template =
+          '<img ngSrc="path/img.png" width="150" height="50" ' +
+          'sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" priority>';
+        const fixture = createTestComponent(template);
+        fixture.detectChanges();
+
+        const nativeElement = fixture.nativeElement as HTMLElement;
+        const img = nativeElement.querySelector('img')!;
+
+        expect(img.getAttribute('sizes')).toBe(
+          '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+        );
+      });
+
+      it('should prepend sizes="auto" to a lazy-loaded image', () => {
         setupTestingModule();
 
         const template =
@@ -2038,7 +2112,7 @@ describe('Image directive', () => {
         const img = nativeElement.querySelector('img')!;
 
         expect(img.getAttribute('sizes')).toBe(
-          '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+          'auto, (max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
         );
       });
 
@@ -2266,7 +2340,11 @@ const IMG_BASE_URL = {
 const ANGULAR_LOGO_BASE64 =
   'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAgMjUwIj4KICAgIDxwYXRoIGZpbGw9IiNERDAwMzEiIGQ9Ik0xMjUgMzBMMzEuOSA2My4ybDE0LjIgMTIzLjFMMTI1IDIzMGw3OC45LTQzLjcgMTQuMi0xMjMuMXoiIC8+CiAgICA8cGF0aCBmaWxsPSIjQzMwMDJGIiBkPSJNMTI1IDMwdjIyLjItLjFWMjMwbDc4LjktNDMuNyAxNC4yLTEyMy4xTDEyNSAzMHoiIC8+CiAgICA8cGF0aCAgZmlsbD0iI0ZGRkZGRiIgZD0iTTEyNSA1Mi4xTDY2LjggMTgyLjZoMjEuN2wxMS43LTI5LjJoNDkuNGwxMS43IDI5LjJIMTgzTDEyNSA1Mi4xem0xNyA4My4zaC0zNGwxNy00MC45IDE3IDQwLjl6IiAvPgogIDwvc3ZnPg==';
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   width = 100;
   height = 50;

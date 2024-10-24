@@ -1,5 +1,3 @@
-@developerPreview
-
 `@let` allows you to define a local variable and re-use it across the template.
 
 ## Syntax
@@ -14,9 +12,10 @@
 `@let` declarations are similar to [JavaScript's `let`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/let) and
 their values can be any valid Angular expression. The expressions will be re-evaluated everytime the template is executed.
 
-Similarly to javascript variables, variables declared `@let`, can be used:
-* After they have been declared
-* Within the bound of the same scope and nested scopes
+Similarly to JavaScript variables, variables declared with `@let`, can be used:
+
+- After they have been declared
+- Within the bound of the same scope and nested scopes
 
 ```angular-html
 @let user = user$ | async;
@@ -38,11 +37,12 @@ Similarly to javascript variables, variables declared `@let`, can be used:
 ## Syntax definition
 
 The `@let` syntax is formally defined as:
-* The `@let` keyword.
-* Followed by one or more whitespaces, not including new lines.
-* Followed by a valid JavaScript name and zero or more whitespaces.
-* Followed by the = symbol and zero or more whitespaces.
-* Followed by an Angular expression which can be multi-line.
-* Terminated by the `;` symbol.
 
-HELPFUL: A comprehensive description of the feature is availble on [the dedicated guide](guide/templates/let-template-variables)
+- The `@let` keyword.
+- Followed by one or more whitespaces, not including new lines.
+- Followed by a valid JavaScript name and zero or more whitespaces.
+- Followed by the = symbol and zero or more whitespaces.
+- Followed by an Angular expression which can be multi-line.
+- Terminated by the `;` symbol.
+
+HELPFUL: A comprehensive description of the feature is availble on [the templates guide](guide/templates/variables#local-template-variables-with-let)

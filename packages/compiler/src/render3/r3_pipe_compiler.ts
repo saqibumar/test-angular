@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import * as o from '../output/output_ast';
 
@@ -60,6 +60,7 @@ export function compilePipeFromMetadata(metadata: R3PipeMetadata): R3CompiledExp
   // e.g. `pure: true`
   definitionMapValues.push({key: 'pure', value: o.literal(metadata.pure), quoted: false});
 
+  // TODO: standalone as default value (invert the condition)
   if (metadata.isStandalone) {
     definitionMapValues.push({key: 'standalone', value: o.literal(true), quoted: false});
   }

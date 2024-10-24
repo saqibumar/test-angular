@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -149,7 +149,7 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
     private readonly perf: PerfRecorder,
   ) {}
 
-  getTemplate(component: ts.ClassDeclaration): TmplAstNode[] | null {
+  getTemplate(component: ts.ClassDeclaration, optimizeFor?: OptimizeFor): TmplAstNode[] | null {
     const {data} = this.getLatestComponentState(component);
     if (data === null) {
       return null;
@@ -165,13 +165,23 @@ export class TemplateTypeCheckerImpl implements TemplateTypeChecker {
     return this.getLatestComponentState(component).data?.boundTarget.getUsedPipes() || null;
   }
 
-  private getLatestComponentState(component: ts.ClassDeclaration): {
+  private getLatestComponentState(
+    component: ts.ClassDeclaration,
+    optimizeFor: OptimizeFor = OptimizeFor.SingleFile,
+  ): {
     data: TemplateData | null;
     tcb: ts.Node | null;
     tcbPath: AbsoluteFsPath;
     tcbIsShim: boolean;
   } {
-    this.ensureShimForComponent(component);
+    switch (optimizeFor) {
+      case OptimizeFor.WholeProgram:
+        this.ensureAllShimsForAllFiles();
+        break;
+      case OptimizeFor.SingleFile:
+        this.ensureShimForComponent(component);
+        break;
+    }
 
     const sf = component.getSourceFile();
     const sfPath = absoluteFromSourceFile(sf);

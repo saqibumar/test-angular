@@ -5,7 +5,7 @@ Tip: This guide assumes you've already read the [Essentials Guide](essentials). 
 You often need to create components that act as containers for different types of content. For
 example, you may want to create a custom card component:
 
-```ts
+```angular-ts
 @Component({
   selector: 'custom-card',
   template: '<div class="card-shadow"> <!-- card content goes here --> </div>',
@@ -15,7 +15,7 @@ export class CustomCard {/* ... */}
 
 **You can use the `<ng-content>` element as a placeholder to mark where content should go**:
 
-```ts
+```angular-ts
 @Component({
   selector: 'custom-card',
   template: '<div class="card-shadow"> <ng-content></ng-content> </div>',
@@ -30,7 +30,7 @@ but with some Angular-specific functionality.
 When you use a component with `<ng-content>`, any children of the component host element are
 rendered, or **projected**, at the location of that `<ng-content>`:
 
-```ts
+```angular-ts
 // Component source
 @Component({
   selector: 'custom-card',
@@ -66,11 +66,12 @@ template.
 **The `<ng-content>` element is neither a component nor DOM element**. Instead, it is a special
 placeholder that tells Angular where to render content. Angular's compiler processes
 all `<ng-content>` elements at build-time. You cannot insert, remove, or modify `<ng-content>` at
-run time. You cannot add **<span style="text-decoration:underline;">directives</span>**, styles, or
-arbitrary attributes to `<ng-content>`.
+run time. You cannot add directives, styles, or arbitrary attributes to `<ng-content>`.
 
-You should not conditionally include `<ng-content>` with `ngIf`, `ngFor`, or `ngSwitch`. For
-conditional rendering of component content, see [Template fragments](api/core/ng-template).
+You should not conditionally include `<ng-content>` with `@if`, `@for`, or `@switch`. Angular always
+instantiates and creates DOM nodes for content rendered to a `<ng-content>` placeholder, even if
+that `<ng-content>` placeholder is hidden. For conditional rendering of component content,
+see [Template fragments](api/core/ng-template).
 
 ## Multiple content placeholders
 
@@ -146,6 +147,38 @@ did not match a `select` attribute:
 
 If a component does not include an `<ng-content>` placeholder without a `select` attribute, any
 elements that don't match one of the component's placeholders do not render into the DOM.
+
+## Fallback content
+
+Angular can show *fallback content* for a component's `<ng-content>` placeholder if that component doesn't have any matching child content. You can specify fallback content by adding child content to the `<ng-content>` element itself.
+
+```angular-html
+<!-- Component template -->
+<div class="card-shadow">
+  <ng-content select="card-title">Default Title</ng-content>
+  <div class="card-divider"></div>
+  <ng-content select="card-body">Default Body</ng-content>
+</div>
+```
+
+```angular-html
+<!-- Using the component -->
+<custom-card>
+  <card-title>Hello</card-title>
+  <!-- No card-body provided -->
+</custom-card>
+```
+
+```angular-html
+<!-- Rendered DOM -->
+<custom-card>
+  <div class="card-shadow">
+    Hello
+    <div class="card-divider"></div>
+    Default Body
+  </div>
+</custom-card>
+```
 
 ## Aliasing content for projection
 

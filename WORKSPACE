@@ -143,10 +143,10 @@ cldr_xml_data_repository(
 # sass rules
 http_archive(
     name = "io_bazel_rules_sass",
-    sha256 = "cd83736ea65d0df064283aea5922dbaf132dd2b3aa54e7151aae7edaa9572c3e",
-    strip_prefix = "rules_sass-83022b98114c07e9588089c7fe8f76bc0262c7e7",
+    sha256 = "b00f13a280fc60ef2a1d142b31c629075bac841c980a0c3462190f338e5d584a",
+    strip_prefix = "rules_sass-6e23fb1351f392f7fe7a07038cd537770fe97742",
     urls = [
-        "https://github.com/bazelbuild/rules_sass/archive/83022b98114c07e9588089c7fe8f76bc0262c7e7.zip",
+        "https://github.com/bazelbuild/rules_sass/archive/6e23fb1351f392f7fe7a07038cd537770fe97742.zip",
     ],
 )
 
@@ -180,4 +180,16 @@ http_archive(
     sha256 = "28277ce81ef9ab84f5b87b526258920a8ead44789a5034346e872629bbf38089",
     strip_prefix = "sc-4.8.2-osx",
     url = "https://saucelabs.com/downloads/sc-4.8.2-osx.zip",
+)
+
+yarn_install(
+    name = "npm_ts_versions",
+    data = [
+        YARN_LABEL,
+        "//:.yarnrc",
+    ],
+    exports_directories_only = False,
+    package_json = "//packages/core/schematics/migrations/signal-migration/test/ts-versions:package.json",
+    yarn = YARN_LABEL,
+    yarn_lock = "//packages/core/schematics/migrations/signal-migration/test/ts-versions:yarn.lock",
 )

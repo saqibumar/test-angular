@@ -12,7 +12,7 @@ import {By} from '@angular/platform-browser';
 import {Terminal} from './terminal.component';
 import {TerminalHandler, TerminalType} from './terminal-handler.service';
 import {WINDOW} from '@angular/docs';
-import {FakeEventTarget} from '@angular/docs/testing';
+import {FakeEventTarget} from '@angular/docs';
 
 describe('Terminal', () => {
   let component: Terminal;
@@ -59,14 +59,5 @@ describe('Terminal', () => {
       TerminalType.READONLY,
       terminalDebugElement.nativeElement,
     );
-  });
-
-  it('should call resizeToFitParent on window resize', async () => {
-    fakeWindow.dispatchEvent(new Event('resize'));
-
-    // debounce time
-    await new Promise((resolve) => setTimeout(resolve, 50));
-
-    expect(terminalHandlerSpy.resizeToFitParent).toHaveBeenCalled();
   });
 });

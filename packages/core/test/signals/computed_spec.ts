@@ -3,11 +3,11 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {computed, signal} from '@angular/core';
-import {createWatch} from '@angular/core/primitives/signals';
+import {createWatch, ReactiveNode, SIGNAL} from '@angular/core/primitives/signals';
 
 describe('computed', () => {
   it('should create computed', () => {
@@ -192,5 +192,13 @@ describe('computed', () => {
     const counter = signal(1);
     const double = computed(() => counter() * 2);
     expect(double + '').toBe('[Computed: 2]');
+  });
+
+  it('should set debugName when a debugName is provided', () => {
+    const primitiveSignal = signal(0);
+    const node = computed(() => primitiveSignal(), {debugName: 'computedSignal'})[
+      SIGNAL
+    ] as ReactiveNode;
+    expect(node.debugName).toBe('computedSignal');
   });
 });

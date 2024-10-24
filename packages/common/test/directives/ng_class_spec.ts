@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgClass} from '@angular/common';
@@ -446,6 +446,7 @@ describe('binding to CSS class list', () => {
           <div leading-space [ngClass]="{' foo': applyClasses}"></div>
           <div trailing-space [ngClass]="{'foo ': applyClasses}"></div>
         `,
+        standalone: false,
       })
       class Cmp {
         applyClasses = true;
@@ -501,7 +502,11 @@ describe('binding to CSS class list', () => {
   });
 });
 
-@Component({selector: 'test-cmp', template: ''})
+@Component({
+  selector: 'test-cmp',
+  template: '',
+  standalone: false,
+})
 class TestComponent {
   condition: boolean = true;
   items: any[] | undefined;

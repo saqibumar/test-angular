@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 /* tslint:disable:no-console  */
 import {Component, Directive, EventEmitter, NgModule} from '@angular/core';
@@ -15,6 +15,7 @@ import {Component, Directive, EventEmitter, NgModule} from '@angular/core';
   template: `
     Bank Name: {{ bankName }} Account Id: {{ id }}
   `,
+  standalone: false,
 })
 export class BankAccountComponent {
   bankName: string | null = null;
@@ -29,12 +30,17 @@ export class BankAccountComponent {
   template: `
     <app-bank-account bankName="RBC" account-id="4747"></app-bank-account>
   `,
+  standalone: false,
 })
 export class MyInputComponent {}
 // #enddocregion component-input
 
 // #docregion component-output-interval
-@Directive({selector: 'app-interval-dir', outputs: ['everySecond', 'fiveSecs: everyFiveSeconds']})
+@Directive({
+  selector: 'app-interval-dir',
+  outputs: ['everySecond', 'fiveSecs: everyFiveSeconds'],
+  standalone: false,
+})
 export class IntervalDirComponent {
   everySecond = new EventEmitter<string>();
   fiveSecs = new EventEmitter<string>();
@@ -53,6 +59,7 @@ export class IntervalDirComponent {
       (everyFiveSeconds)="onEveryFiveSeconds()"
     ></app-interval-dir>
   `,
+  standalone: false,
 })
 export class MyOutputComponent {
   onEverySecond() {

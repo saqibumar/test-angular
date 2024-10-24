@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Lexer, Token} from '@angular/compiler/src/expression_parser/lexer';
@@ -183,6 +183,12 @@ describe('lexer', () => {
       const tokens: Token[] = lex('undefined');
       expectKeywordToken(tokens[0], 0, 9, 'undefined');
       expect(tokens[0].isKeywordUndefined()).toBe(true);
+    });
+
+    it('should tokenize typeof', () => {
+      const tokens: Token[] = lex('typeof');
+      expectKeywordToken(tokens[0], 0, 6, 'typeof');
+      expect(tokens[0].isKeywordTypeof()).toBe(true);
     });
 
     it('should ignore whitespace', () => {

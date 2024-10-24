@@ -3,38 +3,39 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
 
-import {getAngularDecorators} from '../../../../../../compiler-cli/src/ngtsc/annotations';
-import {parseDecoratorInputTransformFunction} from '../../../../../../compiler-cli/src/ngtsc/annotations/directive';
-import {FatalDiagnosticError} from '../../../../../../compiler-cli/src/ngtsc/diagnostics';
-import {Reference, ReferenceEmitter} from '../../../../../../compiler-cli/src/ngtsc/imports';
+import {getAngularDecorators} from '@angular/compiler-cli/src/ngtsc/annotations';
+import {parseDecoratorInputTransformFunction} from '@angular/compiler-cli/src/ngtsc/annotations/directive';
+import {FatalDiagnosticError} from '@angular/compiler-cli/src/ngtsc/diagnostics';
+import {Reference, ReferenceEmitter} from '@angular/compiler-cli/src/ngtsc/imports';
 import {
   DecoratorInputTransform,
   DtsMetadataReader,
   InputMapping,
-} from '../../../../../../compiler-cli/src/ngtsc/metadata';
+} from '@angular/compiler-cli/src/ngtsc/metadata';
 import {
   DynamicValue,
   PartialEvaluator,
   ResolvedValueMap,
-} from '../../../../../../compiler-cli/src/ngtsc/partial_evaluator';
+} from '@angular/compiler-cli/src/ngtsc/partial_evaluator';
 import {
   ClassDeclaration,
-  DecoratorIdentifier,
+  Decorator,
   ReflectionHost,
-} from '../../../../../../compiler-cli/src/ngtsc/reflection';
-import {CompilationMode} from '../../../../../../compiler-cli/src/ngtsc/transform';
+} from '@angular/compiler-cli/src/ngtsc/reflection';
+import {CompilationMode} from '@angular/compiler-cli/src/ngtsc/transform';
 import {MigrationHost} from '../migration_host';
 import {InputNode, isInputContainerNode} from '../input_detection/input_node';
 
 /** Metadata extracted of an input declaration (in `.ts` or `.d.ts` files). */
 export interface ExtractedInput extends InputMapping {
   inSourceFile: boolean;
-  inputDecoratorRef: DecoratorIdentifier | null;
+  inputDecorator: Decorator | null;
+  fieldDecorators: Decorator[];
 }
 
 /** Attempts to extract metadata of a potential TypeScript `@Input()` declaration. */
@@ -87,8 +88,10 @@ function extractDtsInput(node: ts.Node, metadataReader: DtsMetadataReader): Extr
     ? null
     : {
         ...inputMapping,
-        inputDecoratorRef: null,
+        inputDecorator: null,
         inSourceFile: false,
+        // Inputs from `.d.ts` cannot have any field decorators applied.
+        fieldDecorators: [],
       };
 }
 
@@ -152,7 +155,8 @@ function extractSourceCodeInput(
     isSignal: false,
     inSourceFile: true,
     transform: transformResult,
-    inputDecoratorRef: inputDecorator.identifier,
+    inputDecorator,
+    fieldDecorators: decorators,
   };
 }
 

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ERROR_DETAILS_PAGE_BASE_URL} from './error_details_base_url';
@@ -132,8 +132,10 @@ export const enum RuntimeErrorCode {
   LOOP_TRACK_RECREATE = -956,
 
   // Runtime dependency tracker errors
-  RUNTIME_DEPS_INVALID_IMPORTED_TYPE = 1000,
-  RUNTIME_DEPS_ORPHAN_COMPONENT = 1001,
+  RUNTIME_DEPS_INVALID_IMPORTED_TYPE = 980,
+  RUNTIME_DEPS_ORPHAN_COMPONENT = 981,
+
+  // Upper bounds for core runtime errors is 999
 }
 
 /**

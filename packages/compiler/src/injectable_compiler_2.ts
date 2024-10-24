@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import * as o from './output/output_ast';
@@ -185,6 +185,6 @@ function delegateToFactory(
 }
 
 function createFactoryFunction(type: o.Expression): o.ArrowFunctionExpr {
-  const t = new o.FnParam('ɵt', o.DYNAMIC_TYPE);
+  const t = new o.FnParam('__ngFactoryType__', o.DYNAMIC_TYPE);
   return o.arrowFn([t], type.prop('ɵfac').callFn([o.variable(t.name)]));
 }

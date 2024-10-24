@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {CommonModule, SlicePipe} from '@angular/common';
@@ -90,7 +90,11 @@ describe('SlicePipe', () => {
   });
 
   describe('integration', () => {
-    @Component({selector: 'test-comp', template: '{{(data | slice:1).join(",") }}'})
+    @Component({
+      selector: 'test-comp',
+      template: '{{(data | slice:1).join(",") }}',
+      standalone: false,
+    })
     class TestComp {
       data: any;
     }

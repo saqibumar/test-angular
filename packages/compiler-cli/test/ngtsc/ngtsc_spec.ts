@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgtscProgram} from '@angular/compiler-cli/src/ngtsc/program';
@@ -66,6 +66,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           templateUrl: 'test.html',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -147,7 +148,7 @@ runInEachFileSystem((os: string) => {
       expect(jsContents).toContain('Dep.ɵprov =');
       expect(jsContents).toContain('Service.ɵprov =');
       expect(jsContents).toContain(
-        'Service.ɵfac = function Service_Factory(ɵt) { return new (ɵt || Service)(i0.ɵɵinject(Dep)); };',
+        'Service.ɵfac = function Service_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || Service)(i0.ɵɵinject(Dep)); };',
       );
       expect(jsContents).toContain("providedIn: 'root' })");
       expect(jsContents).not.toContain('__decorate');
@@ -176,7 +177,9 @@ runInEachFileSystem((os: string) => {
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain('Service.ɵprov =');
       expect(jsContents).toContain('factory: () => (() => new Service())()');
-      expect(jsContents).toContain('Service_Factory(ɵt) { return new (ɵt || Service)(); }');
+      expect(jsContents).toContain(
+        'Service_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || Service)(); }',
+      );
       expect(jsContents).toContain(", providedIn: 'root' });");
       expect(jsContents).not.toContain('__decorate');
       const dtsContents = env.getContents('test.d.ts');
@@ -205,11 +208,13 @@ runInEachFileSystem((os: string) => {
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain('Service.ɵprov =');
       expect(jsContents).toContain(
-        'factory: function Service_Factory(ɵt) { let ɵr = null; if (ɵt) {',
+        'factory: function Service_Factory(__ngFactoryType__) { let __ngConditionalFactory__ = null; if (__ngFactoryType__) {',
       );
-      expect(jsContents).toContain('return new (ɵt || Service)(i0.ɵɵinject(Dep));');
-      expect(jsContents).toContain('ɵr = ((dep) => new Service(dep))(i0.ɵɵinject(Dep));');
-      expect(jsContents).toContain("return ɵr; }, providedIn: 'root' });");
+      expect(jsContents).toContain('return new (__ngFactoryType__ || Service)(i0.ɵɵinject(Dep));');
+      expect(jsContents).toContain(
+        '__ngConditionalFactory__ = ((dep) => new Service(dep))(i0.ɵɵinject(Dep));',
+      );
+      expect(jsContents).toContain("return __ngConditionalFactory__; }, providedIn: 'root' });");
       expect(jsContents).not.toContain('__decorate');
       const dtsContents = env.getContents('test.d.ts');
       expect(dtsContents).toContain('static ɵprov: i0.ɵɵInjectableDeclaration<Service>;');
@@ -241,11 +246,13 @@ runInEachFileSystem((os: string) => {
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain('Service.ɵprov =');
       expect(jsContents).toContain(
-        'factory: function Service_Factory(ɵt) { let ɵr = null; if (ɵt) {',
+        'factory: function Service_Factory(__ngFactoryType__) { let __ngConditionalFactory__ = null; if (__ngFactoryType__) {',
       );
-      expect(jsContents).toContain('return new (ɵt || Service)(i0.ɵɵinject(Dep));');
-      expect(jsContents).toContain('ɵr = ((dep) => new Service(dep))(i0.ɵɵinject(Dep, 10));');
-      expect(jsContents).toContain(`return ɵr; }, providedIn: 'root' });`);
+      expect(jsContents).toContain('return new (__ngFactoryType__ || Service)(i0.ɵɵinject(Dep));');
+      expect(jsContents).toContain(
+        '__ngConditionalFactory__ = ((dep) => new Service(dep))(i0.ɵɵinject(Dep, 10));',
+      );
+      expect(jsContents).toContain(`return __ngConditionalFactory__; }, providedIn: 'root' });`);
       expect(jsContents).not.toContain('__decorate');
       const dtsContents = env.getContents('test.d.ts');
       expect(dtsContents).toContain('static ɵprov: i0.ɵɵInjectableDeclaration<Service>;');
@@ -278,7 +285,7 @@ runInEachFileSystem((os: string) => {
       expect(jsContents).toContain('Service.ɵprov =');
       expect(jsContents).toContain('Mod.ɵmod =');
       expect(jsContents).toContain(
-        'Service.ɵfac = function Service_Factory(ɵt) { return new (ɵt || Service)(i0.ɵɵinject(Dep)); };',
+        'Service.ɵfac = function Service_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || Service)(i0.ɵɵinject(Dep)); };',
       );
       expect(jsContents).toContain('providedIn: i0.forwardRef(() => Mod) })');
       expect(jsContents).not.toContain('__decorate');
@@ -334,8 +341,8 @@ runInEachFileSystem((os: string) => {
       const jsContents = env.getContents('test.js');
 
       expect(jsContents).toContain(
-        `Service.ɵfac = function Service_Factory(ɵt) { ` +
-          `return new (ɵt || Service)(i0.ɵɵinject(Dep), i0.ɵɵinject(OptionalDep, 8)); };`,
+        `Service.ɵfac = function Service_Factory(__ngFactoryType__) { ` +
+          `return new (__ngFactoryType__ || Service)(i0.ɵɵinject(Dep), i0.ɵɵinject(OptionalDep, 8)); };`,
       );
     });
 
@@ -345,7 +352,10 @@ runInEachFileSystem((os: string) => {
         `
         import {Directive} from '@angular/core';
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         export class TestDir {}
       `,
       );
@@ -384,7 +394,7 @@ runInEachFileSystem((os: string) => {
 
       const dtsContents = env.getContents('test.d.ts');
       expect(dtsContents).toContain(
-        'static ɵdir: i0.ɵɵDirectiveDeclaration<TestDir, never, never, {}, {}, never, never, false, never>',
+        'static ɵdir: i0.ɵɵDirectiveDeclaration<TestDir, never, never, {}, {}, never, never, true, never>',
       );
       expect(dtsContents).toContain('static ɵfac: i0.ɵɵFactoryDeclaration<TestDir, never>');
     });
@@ -398,6 +408,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: 'this is a test',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -426,6 +437,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: 'this is ' + 'a test',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -459,6 +471,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: getTemplate(),
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -487,6 +500,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           templateUrl: './dir/test.html',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -508,6 +522,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'broken-cmp',
           template: '{{ broken = "true" }}', // assignment not legal in this context
+          standalone: false,
         })
         export class BrokenCmp {}
 
@@ -535,10 +550,16 @@ runInEachFileSystem((os: string) => {
         `
             import {Directive, NgModule} from '@angular/core';
 
-            @Directive({selector: 'internal'})
+            @Directive({
+              selector: 'internal',
+              standalone: false,
+            })
             export class InternalDir {}
 
-            @Directive({selector: 'external'})
+            @Directive({
+              selector: 'external',
+              standalone: false,
+            })
             export class ExternalDir {}
 
             @NgModule({
@@ -566,7 +587,10 @@ runInEachFileSystem((os: string) => {
         `
             import {Directive, NgModule} from '@angular/core';
 
-            @Directive({selector: 'internal'})
+            @Directive({
+              selector: 'internal',
+              standalone: false,
+            })
             export class InternalDir {}
 
             @NgModule({
@@ -575,7 +599,10 @@ runInEachFileSystem((os: string) => {
             })
             export class DepModule {}
 
-            @Directive({selector: 'external'})
+            @Directive({
+              selector: 'external',
+              standalone: false,
+            })
             export class ExternalDir {}
 
             @NgModule({
@@ -645,6 +672,37 @@ runInEachFileSystem((os: string) => {
       expect(env.getContents('test.js')).not.toContain('NonJitComponent.propDecorators');
     });
 
+    it('should run JIT transform for `NgModule` marked as `jit: true`', () => {
+      env.write(
+        'test.ts',
+        `
+        import {NgModule, Injector} from '@angular/core';
+
+        @NgModule({
+          jit: true
+        })
+        class MyJitModule {
+          constructor(dep: Injector) {}
+        }
+
+        @NgModule({})
+        class NonJitModule {
+          constructor(dep: Injector) {}
+        }
+      `,
+      );
+
+      env.driveMain();
+
+      expect(trim(env.getContents('test.js'))).toContain(
+        trim(`
+        MyJitModule.ctorParameters = () => [
+          { type: Injector }
+        ];`),
+      );
+      expect(env.getContents('test.js')).not.toContain('NonJitModule.ctorParameters');
+    });
+
     // This test triggers the Tsickle compiler which asserts that the file-paths
     // are valid for the real OS. When on non-Windows systems it doesn't like paths
     // that start with `C:`.
@@ -677,7 +735,7 @@ runInEachFileSystem((os: string) => {
           const jsContents = env.getContents('test.js');
           expect(jsContents).toContain('Dir.ɵfac = /** @pureOrBreakMyCode */ (() => {');
           expect(jsContents).toContain(
-            '(ɵDir_BaseFactory || (ɵDir_BaseFactory = i0.ɵɵgetInheritedFactory(Dir)))(ɵt || Dir);',
+            '(ɵDir_BaseFactory || (ɵDir_BaseFactory = i0.ɵɵgetInheritedFactory(Dir)))(__ngFactoryType__ || Dir);',
           );
         });
 
@@ -722,12 +780,14 @@ runInEachFileSystem((os: string) => {
                   <some-dir>Has a directive, should be okay</some-dir>
                   <not-a-cmp>Should trigger a schema error</not-a-cmp>
                 </ng-template>
-              \`
+              \`,
+              standalone: false,
             })
             export class TestCmp {}
 
             @Directive({
               selector: 'some-dir',
+              standalone: false,
             })
             export class TestDir {}
 
@@ -913,7 +973,8 @@ runInEachFileSystem((os: string) => {
 
       @AngularComponent({
         selector: 'test-component',
-        template: '...'
+        template: '...',
+        standalone: false,
       })
       export class TestComponent {
         @AngularInput() input: any;
@@ -921,12 +982,14 @@ runInEachFileSystem((os: string) => {
       }
 
       @AngularDirective({
-        selector: 'test-directive'
+        selector: 'test-directive',
+        standalone: false,
       })
       export class TestDirective {}
 
       @AngularPipe({
-        name: 'test-pipe'
+        name: 'test-pipe',
+        standalone: false,
       })
       export class TestPipe {}
 
@@ -972,7 +1035,10 @@ runInEachFileSystem((os: string) => {
 
         // ModuleA classes
 
-        @Pipe({name: 'number'})
+        @Pipe({
+          name: 'number',
+          standalone: false,
+        })
         class PipeA {
           transform() {}
         }
@@ -985,14 +1051,18 @@ runInEachFileSystem((os: string) => {
 
         // ModuleB classes
 
-        @Pipe({name: 'number'})
+        @Pipe({
+          name: 'number',
+          standalone: false,
+        })
         class PipeB {
           transform() {}
         }
 
         @Component({
           selector: 'app',
-          template: '{{ count | number }}'
+          template: '{{ count | number }}',
+          standalone: false,
         })
         export class App {
           count = 0;
@@ -1021,7 +1091,10 @@ runInEachFileSystem((os: string) => {
 
             // ModuleA classes
 
-            @Pipe({name: 'number'})
+            @Pipe({
+              name: 'number',
+              standalone: false,
+            })
             class PipeA {
               transform() {}
             }
@@ -1034,7 +1107,10 @@ runInEachFileSystem((os: string) => {
 
             // ModuleB classes
 
-            @Pipe({name: 'number'})
+            @Pipe({
+              name: 'number',
+              standalone: false,
+            })
             class PipeB {
               transform() {}
             }
@@ -1049,7 +1125,8 @@ runInEachFileSystem((os: string) => {
 
             @Component({
               selector: 'app',
-              template: '{{ count | number }}'
+              template: '{{ count | number }}',
+              standalone: false,
             })
             export class App {
               count = 0;
@@ -1078,12 +1155,16 @@ runInEachFileSystem((os: string) => {
 
         // ModuleA classes
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class DirectiveA {}
 
         @Component({
           selector: 'comp',
-          template: '...'
+          template: '...',
+          standalone: false,
         })
         class ComponentA {}
 
@@ -1095,12 +1176,16 @@ runInEachFileSystem((os: string) => {
 
         // ModuleB classes
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class DirectiveB {}
 
         @Component({
           selector: 'comp',
           template: '...',
+          standalone: false,
         })
         export class ComponentB {}
 
@@ -1110,6 +1195,7 @@ runInEachFileSystem((os: string) => {
             <div dir></div>
             <comp></comp>
           \`,
+          standalone: false,
         })
         export class App {}
 
@@ -1138,12 +1224,16 @@ runInEachFileSystem((os: string) => {
 
         // ModuleA classes
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class DirectiveA {}
 
         @Component({
           selector: 'comp',
-          template: '...'
+          template: '...',
+          standalone: false,
         })
         class ComponentA {}
 
@@ -1155,12 +1245,16 @@ runInEachFileSystem((os: string) => {
 
         // ModuleB classes
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         class DirectiveB {}
 
         @Component({
           selector: 'comp',
-          template: '...'
+          template: '...',
+          standalone: false,
         })
         class ComponentB {}
 
@@ -1178,6 +1272,7 @@ runInEachFileSystem((os: string) => {
             <div dir></div>
             <comp></comp>
           \`,
+          standalone: false,
         })
         export class App {}
 
@@ -1208,6 +1303,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           templateUrl: 'test.html',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -1230,6 +1326,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           templateUrl: '/test.html',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -1251,6 +1348,7 @@ runInEachFileSystem((os: string) => {
           selector: 'test-cmp',
           styleUrls: ['./dir/style.css'],
           template: '',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -1273,6 +1371,7 @@ runInEachFileSystem((os: string) => {
           selector: 'test-cmp',
           styleUrls: ['./dir/style.scss'],
           template: '',
+          standalone: false,
         })
         export class TestCmp {}
     `,
@@ -1302,11 +1401,11 @@ runInEachFileSystem((os: string) => {
 
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        'i0.ɵɵdefineDirective({ type: TestBase, inputs: { input: "input" } });',
+        'i0.ɵɵdefineDirective({ type: TestBase, inputs: { input: "input" }, standalone: true });',
       );
 
       const dtsContents = env.getContents('test.d.ts');
-      const expectedDirectiveDeclaration = `static ɵdir: i0.ɵɵDirectiveDeclaration<TestBase, never, never, { "input": { "alias": "input"; "required": false; }; }, {}, never, never, false, never>;`;
+      const expectedDirectiveDeclaration = `static ɵdir: i0.ɵɵDirectiveDeclaration<TestBase, never, never, { "input": { "alias": "input"; "required": false; }; }, {}, never, never, true, never>;`;
       expect(dtsContents).toContain(expectedDirectiveDeclaration);
     });
 
@@ -1396,6 +1495,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: 'this is a test',
+          standalone: false,
         })
         export class TestCmp {}
 
@@ -1417,7 +1517,7 @@ runInEachFileSystem((os: string) => {
         'function () { (typeof ngJitMode === "undefined" || ngJitMode) && i0.ɵɵsetNgModuleScope(TestModule, { declarations: [TestCmp] }); })();',
       );
       expect(jsContents).toContain(
-        'TestModule.ɵfac = function TestModule_Factory(ɵt) { return new (ɵt || TestModule)(); }',
+        'TestModule.ɵfac = function TestModule_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestModule)(); }',
       );
       expect(jsContents).toContain('i0.ɵɵdefineInjector({});');
 
@@ -1541,16 +1641,29 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Pipe} from '@angular/core';
 
-      @Directive({selector: '[dir]'})
+      @Directive({
+        selector: '[dir]',
+        standalone: false,
+      })
       export class Dir {}
 
-      @Directive({selector: '[other]'})
+      @Directive({
+        selector: '[other]',
+        standalone: false,
+      })
       export class OtherDir {}
 
-      @Pipe({name:'pipe'})
+      @Pipe({
+        name:'pipe',
+        standalone: false,
+      })
       export class MyPipe {}
 
-      @Component({selector: 'test', template: ''})
+      @Component({
+        selector: 'test',
+        template: '',
+        standalone: false
+      })
       export class Comp {}
     `,
       );
@@ -1574,7 +1687,7 @@ runInEachFileSystem((os: string) => {
 
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        'TestModule.ɵfac = function TestModule_Factory(ɵt) { return new (ɵt || TestModule)(); }',
+        'TestModule.ɵfac = function TestModule_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestModule)(); }',
       );
       expect(jsContents).toContain(
         'i0.ɵɵdefineInjector({ imports: [OtherModule, RouterModule.forRoot(),' +
@@ -1596,6 +1709,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: 'this is a test',
+          standalone: false,
         })
         export class TestCmp {}
 
@@ -1612,7 +1726,7 @@ runInEachFileSystem((os: string) => {
 
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        'TestModule.ɵfac = function TestModule_Factory(ɵt) { return new (ɵt || TestModule)(); }',
+        'TestModule.ɵfac = function TestModule_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestModule)(); }',
       );
       expect(jsContents).toContain('i0.ɵɵdefineNgModule({ type: TestModule });');
       expect(jsContents).toContain(
@@ -1642,6 +1756,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: 'this is a test',
+          standalone: false,
         })
         export class TestCmp {}
 
@@ -1658,7 +1773,7 @@ runInEachFileSystem((os: string) => {
 
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        'TestModule.ɵfac = function TestModule_Factory(ɵt) { return new (ɵt || TestModule)(); }',
+        'TestModule.ɵfac = function TestModule_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestModule)(); }',
       );
       expect(jsContents).toContain('i0.ɵɵdefineNgModule({ type: TestModule });');
       expect(jsContents).toContain(
@@ -1692,6 +1807,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test-cmp',
           template: 'this is a test',
+          standalone: false,
         })
         export class TestCmp {}
 
@@ -1708,7 +1824,7 @@ runInEachFileSystem((os: string) => {
 
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        'TestModule.ɵfac = function TestModule_Factory(ɵt) { return new (ɵt || TestModule)(); }',
+        'TestModule.ɵfac = function TestModule_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestModule)(); }',
       );
       expect(jsContents).toContain('i0.ɵɵdefineNgModule({ type: TestModule });');
       expect(jsContents).toContain(
@@ -1741,7 +1857,11 @@ runInEachFileSystem((os: string) => {
         'foo.ts',
         `
       import {Component} from '@angular/core';
-      @Component({selector: 'foo', template: ''})
+      @Component({
+        selector: 'foo',
+        template: '',
+        standalone: false,
+      })
       export class Foo {}
     `,
       );
@@ -1789,6 +1909,7 @@ runInEachFileSystem((os: string) => {
       @Component({
         selector: 'foo',
         template: '',
+        standalone: false,
       })
       export class Foo {
       }
@@ -1816,7 +1937,11 @@ runInEachFileSystem((os: string) => {
       })
       export class FooModule {}
 
-      @Component({selector: 'foo', template: 'foo'})
+      @Component({
+        selector: 'foo',
+        template: 'foo',
+        standalone: false,
+      })
       export class Foo {}
     `,
       );
@@ -1838,7 +1963,10 @@ runInEachFileSystem((os: string) => {
       })
       export class FooModule {}
 
-      @Directive({selector: 'foo'})
+      @Directive({
+        selector: 'foo',
+        standalone: false,
+      })
       export class Foo {}
     `,
       );
@@ -1901,7 +2029,10 @@ runInEachFileSystem((os: string) => {
 
           export const useFoo = forwardRef(() => Foo);
 
-          @Directive({selector: 'foo'})
+          @Directive({
+            selector: 'foo',
+            standalone: false,
+          })
           export class Foo {}
           `,
       );
@@ -1933,7 +2064,10 @@ runInEachFileSystem((os: string) => {
 
           export const useFoo = forwardRef(() => Foo);
 
-          @Directive({selector: 'foo'})
+          @Directive({
+            selector: 'foo',
+            standalone: false,
+          })
           export class Foo {}
           `,
       );
@@ -1966,6 +2100,7 @@ runInEachFileSystem((os: string) => {
         @Pipe({
           name: 'test-pipe',
           pure: false,
+          standalone: false,
         })
         export class TestPipe {}
     `,
@@ -1980,7 +2115,7 @@ runInEachFileSystem((os: string) => {
         'TestPipe.ɵpipe = /*@__PURE__*/ i0.ɵɵdefinePipe({ name: "test-pipe", type: TestPipe, pure: false })',
       );
       expect(jsContents).toContain(
-        'TestPipe.ɵfac = function TestPipe_Factory(ɵt) { return new (ɵt || TestPipe)(); }',
+        'TestPipe.ɵfac = function TestPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestPipe)(); }',
       );
       expect(dtsContents).toContain(
         'static ɵpipe: i0.ɵɵPipeDeclaration<TestPipe, "test-pipe", false>;',
@@ -1996,6 +2131,7 @@ runInEachFileSystem((os: string) => {
 
         @Pipe({
           name: 'test-pipe',
+          standalone: false,
         })
         export class TestPipe {}
     `,
@@ -2010,7 +2146,7 @@ runInEachFileSystem((os: string) => {
         'TestPipe.ɵpipe = /*@__PURE__*/ i0.ɵɵdefinePipe({ name: "test-pipe", type: TestPipe, pure: true })',
       );
       expect(jsContents).toContain(
-        'TestPipe.ɵfac = function TestPipe_Factory(ɵt) { return new (ɵt || TestPipe)(); }',
+        'TestPipe.ɵfac = function TestPipe_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || TestPipe)(); }',
       );
       expect(dtsContents).toContain(
         'static ɵpipe: i0.ɵɵPipeDeclaration<TestPipe, "test-pipe", false>;',
@@ -2029,6 +2165,7 @@ runInEachFileSystem((os: string) => {
         @Pipe({
           name: 'test-pipe',
           pure: false,
+          standalone: false,
         })
         export class TestPipe {
           constructor(dep: Dep) {}
@@ -2039,7 +2176,9 @@ runInEachFileSystem((os: string) => {
       env.driveMain();
 
       const jsContents = env.getContents('test.js');
-      expect(jsContents).toContain('return new (ɵt || TestPipe)(i0.ɵɵdirectiveInject(Dep, 16));');
+      expect(jsContents).toContain(
+        'return new (__ngFactoryType__ || TestPipe)(i0.ɵɵdirectiveInject(Dep, 16));',
+      );
     });
 
     it('should compile Pipes with generic types', () => {
@@ -2050,6 +2189,7 @@ runInEachFileSystem((os: string) => {
 
         @Pipe({
           name: 'test-pipe',
+          standalone: false,
         })
         export class TestPipe<T> {}
     `,
@@ -2072,12 +2212,19 @@ runInEachFileSystem((os: string) => {
         `
         import {Component, NgModule, Pipe} from '@angular/core';
 
-        @Pipe({name: 'test'})
+        @Pipe({
+          name: 'test',
+          standalone: false,
+        })
         export class TestPipe {
           transform() {}
         }
 
-        @Component({selector: 'test-cmp', template: '{{value | test}}'})
+        @Component({
+          selector: 'test-cmp',
+          template: '{{value | test}}',
+          standalone: false,
+        })
         export class TestCmp {
           value = '';
         }
@@ -2107,6 +2254,7 @@ runInEachFileSystem((os: string) => {
 
         @Component({
           template: '...',
+          standalone: false,
         })
         export class TestCmp {}
       `,
@@ -2127,6 +2275,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: '',
           template: '...',
+          standalone: false,
         })
         export class TestCmp {}
       `,
@@ -2154,7 +2303,8 @@ runInEachFileSystem((os: string) => {
           export abstract class EmptyDir {}
 
           @Directive({
-            inputs: ['a', 'b']
+            inputs: ['a', 'b'],
+            standalone: false,
           })
           export class TestDirWithInputs {}
         `,
@@ -2190,7 +2340,10 @@ runInEachFileSystem((os: string) => {
           import {NgModule, Directive} from '@angular/core';
           import {BaseClass} from 'lib1_built';
 
-          @Directive({selector: 'my-dir'})
+          @Directive({
+            selector: 'my-dir',
+            standalone: false,
+          })
           export class MyDirective extends BaseClass {}
 
           @NgModule({declarations: [MyDirective]})
@@ -2207,7 +2360,9 @@ runInEachFileSystem((os: string) => {
           `
           import {Directive, NgModule} from '@angular/core';
 
-          @Directive({})
+          @Directive({
+            standalone: false,
+          })
           export class BaseDir {}
 
           @NgModule({
@@ -2229,7 +2384,8 @@ runInEachFileSystem((os: string) => {
         import {Directive} from '@angular/core';
 
         @Directive({
-          selector: ''
+          selector: '',
+          standalone: false,
         })
         export class TestDir {}
       `,
@@ -3037,15 +3193,25 @@ runInEachFileSystem((os: string) => {
           `
         import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-        @Component({selector: 'test', template: 'test'})
+        @Component({
+          selector: 'test',
+          template: 'test',
+          standalone: false,
+        })
         @Injectable()
         export class TestCmp {}
 
-        @Directive({selector: 'test'})
+        @Directive({
+          selector: 'test',
+          standalone: false,
+        })
         @Injectable()
         export class TestDir {}
 
-        @Pipe({name: 'test'})
+        @Pipe({
+          name: 'test',
+          standalone: false,
+        })
         @Injectable()
         export class TestPipe {}
 
@@ -3091,7 +3257,11 @@ runInEachFileSystem((os: string) => {
           `
         import {Component, Directive} from '@angular/core';
 
-        @Component({selector: 'test', template: 'test'})
+        @Component({
+          selector: 'test',
+          template: 'test',
+          standalone: false,
+        })
         @Directive({selector: 'test'})
         class ShouldNotCompile {}
       `,
@@ -3111,6 +3281,7 @@ runInEachFileSystem((os: string) => {
         @Directive({
           selector: 'test',
           jit: true,
+          standalone: false,
         })
         export class Test {
           constructor(@Inject('foo') foo: string) {}
@@ -3416,7 +3587,9 @@ runInEachFileSystem((os: string) => {
 
           env.driveMain();
           const jsContents = env.getContents('test.js');
-          expect(jsContents).toMatch(/function Test_Factory\(ɵt\) { i0\.ɵɵinvalidFactory\(\)/m);
+          expect(jsContents).toMatch(
+            /function Test_Factory\(__ngFactoryType__\) { i0\.ɵɵinvalidFactory\(\)/m,
+          );
         });
 
         it('should not give a compile-time error if an invalid @Injectable is used with useFactory', () => {
@@ -3438,7 +3611,9 @@ runInEachFileSystem((os: string) => {
 
           env.driveMain();
           const jsContents = env.getContents('test.js');
-          expect(jsContents).toMatch(/function Test_Factory\(ɵt\) { i0\.ɵɵinvalidFactory\(\)/m);
+          expect(jsContents).toMatch(
+            /function Test_Factory\(__ngFactoryType__\) { i0\.ɵɵinvalidFactory\(\)/m,
+          );
         });
 
         it('should not give a compile-time error if an invalid @Injectable is used with useExisting', () => {
@@ -3462,7 +3637,9 @@ runInEachFileSystem((os: string) => {
 
           env.driveMain();
           const jsContents = env.getContents('test.js');
-          expect(jsContents).toMatch(/function Test_Factory\(ɵt\) { i0\.ɵɵinvalidFactory\(\)/m);
+          expect(jsContents).toMatch(
+            /function Test_Factory\(__ngFactoryType__\) { i0\.ɵɵinvalidFactory\(\)/m,
+          );
         });
 
         it('should not give a compile-time error if an invalid @Injectable is used with useClass', () => {
@@ -3486,7 +3663,9 @@ runInEachFileSystem((os: string) => {
 
           env.driveMain();
           const jsContents = env.getContents('test.js');
-          expect(jsContents).toMatch(/function Test_Factory\(ɵt\) { i0\.ɵɵinvalidFactory\(\)/m);
+          expect(jsContents).toMatch(
+            /function Test_Factory\(__ngFactoryType__\) { i0\.ɵɵinvalidFactory\(\)/m,
+          );
         });
 
         it('should not give a compile-time error if an invalid @Injectable without providedIn is an abstract class', () => {
@@ -3505,7 +3684,9 @@ runInEachFileSystem((os: string) => {
 
           env.driveMain();
           const jsContents = env.getContents('test.js');
-          expect(jsContents).toMatch(/function Test_Factory\(ɵt\) { i0\.ɵɵinvalidFactory\(\)/m);
+          expect(jsContents).toMatch(
+            /function Test_Factory\(__ngFactoryType__\) { i0\.ɵɵinvalidFactory\(\)/m,
+          );
         });
 
         it('should not give a compile-time error if an invalid @Injectable with providedIn is an abstract class', () => {
@@ -3526,7 +3707,9 @@ runInEachFileSystem((os: string) => {
 
           env.driveMain();
           const jsContents = env.getContents('test.js');
-          expect(jsContents).toMatch(/function Test_Factory\(ɵt\) { i0\.ɵɵinvalidFactory\(\)/m);
+          expect(jsContents).toMatch(
+            /function Test_Factory\(__ngFactoryType__\) { i0\.ɵɵinvalidFactory\(\)/m,
+          );
         });
 
         it('should give a compile-time error when a derived Directive inherits an invalid constructor', () => {
@@ -3788,7 +3971,7 @@ runInEachFileSystem((os: string) => {
           env.driveMain();
           const jsContents = env.getContents('test.js');
           expect(jsContents).toContain(
-            'Test.ɵfac = function Test_Factory(ɵt) { i0.ɵɵinvalidFactory()',
+            'Test.ɵfac = function Test_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory()',
           );
         });
 
@@ -3808,7 +3991,7 @@ runInEachFileSystem((os: string) => {
           env.driveMain();
           const jsContents = env.getContents('test.js');
           expect(jsContents).toContain(
-            'Test.ɵfac = function Test_Factory(ɵt) { i0.ɵɵinvalidFactory()',
+            'Test.ɵfac = function Test_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory()',
           );
         });
 
@@ -4007,7 +4190,7 @@ runInEachFileSystem((os: string) => {
           env.driveMain();
           const jsContents = env.getContents('test.js');
           expect(jsContents).toContain(
-            'Test.ɵfac = function Test_Factory(ɵt) { i0.ɵɵinvalidFactory()',
+            'Test.ɵfac = function Test_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory()',
           );
         });
       });
@@ -4029,7 +4212,7 @@ runInEachFileSystem((os: string) => {
         env.driveMain();
         const jsContents = env.getContents('test.js');
         expect(jsContents).toContain(
-          'Test.ɵfac = function Test_Factory(ɵt) { i0.ɵɵinvalidFactory()',
+          'Test.ɵfac = function Test_Factory(__ngFactoryType__) { i0.ɵɵinvalidFactory()',
         );
       });
     });
@@ -4503,7 +4686,7 @@ runInEachFileSystem((os: string) => {
       env.driveMain();
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        `FooCmp.ɵfac = function FooCmp_Factory(ɵt) { return new (ɵt || FooCmp)(i0.ɵɵinjectAttribute("test"), i0.ɵɵdirectiveInject(i0.ChangeDetectorRef), i0.ɵɵdirectiveInject(i0.ElementRef), i0.ɵɵdirectiveInject(i0.Injector), i0.ɵɵdirectiveInject(i0.Renderer2), i0.ɵɵdirectiveInject(i0.TemplateRef), i0.ɵɵdirectiveInject(i0.ViewContainerRef)); }`,
+        `FooCmp.ɵfac = function FooCmp_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || FooCmp)(i0.ɵɵinjectAttribute("test"), i0.ɵɵdirectiveInject(i0.ChangeDetectorRef), i0.ɵɵdirectiveInject(i0.ElementRef), i0.ɵɵdirectiveInject(i0.Injector), i0.ɵɵdirectiveInject(i0.Renderer2), i0.ɵɵdirectiveInject(i0.TemplateRef), i0.ɵɵdirectiveInject(i0.ViewContainerRef)); }`,
       );
     });
 
@@ -4652,6 +4835,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'test',
           template: '<ng-content></ng-content> <ng-content select=".foo"></ng-content>',
+          standalone: false,
         })
         export class TestCmp {
         }
@@ -5446,12 +5630,14 @@ runInEachFileSystem((os: string) => {
 
         @Directive({
           selector: '[dir]',
+          standalone: false,
         })
         export class Dir {}
 
         @Component({
           selector: 'test',
           template: '<div dir>Test</div>',
+          standalone: false,
         })
         export class Comp {}
     `,
@@ -5471,6 +5657,7 @@ runInEachFileSystem((os: string) => {
         @Directive({
           selector: '[test]',
           exportAs: 'foo',
+          standalone: false,
         })
         class Dir {}
     `,
@@ -5491,6 +5678,7 @@ runInEachFileSystem((os: string) => {
         @Directive({
           selector: '[test]',
           exportAs: 'foo, bar',
+          standalone: false,
         })
         class Dir {}
     `,
@@ -5510,7 +5698,8 @@ runInEachFileSystem((os: string) => {
 
         @Component({
           template: '<div *tmpl [(bananaInABox)]="prop"></div>',
-          selector: 'test'
+          selector: 'test',
+          standalone: false,
         })
         class TestCmp {}
     `,
@@ -5548,13 +5737,13 @@ runInEachFileSystem((os: string) => {
       const jsContents = env.getContents('test.js');
 
       expect(jsContents).toContain(
-        'function Base_Factory(ɵt) { return new (ɵt || Base)(i0.ɵɵinject(Dep)); }',
+        'function Base_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || Base)(i0.ɵɵinject(Dep)); }',
       );
       expect(jsContents).toContain(
-        '(() => { let ɵChild_BaseFactory; return function Child_Factory(ɵt) { return (ɵChild_BaseFactory || (ɵChild_BaseFactory = i0.ɵɵgetInheritedFactory(Child)))(ɵt || Child); }; })();',
+        '(() => { let ɵChild_BaseFactory; return function Child_Factory(__ngFactoryType__) { return (ɵChild_BaseFactory || (ɵChild_BaseFactory = i0.ɵɵgetInheritedFactory(Child)))(__ngFactoryType__ || Child); }; })();',
       );
       expect(jsContents).toContain(
-        'function GrandChild_Factory(ɵt) { return new (ɵt || GrandChild)(); }',
+        'function GrandChild_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || GrandChild)(); }',
       );
     });
 
@@ -5580,7 +5769,7 @@ runInEachFileSystem((os: string) => {
       env.driveMain();
       const jsContents = env.getContents('test.js');
       expect(jsContents).toContain(
-        '/*@__PURE__*/ (() => { let ɵDir_BaseFactory; return function Dir_Factory(ɵt) { return (ɵDir_BaseFactory || (ɵDir_BaseFactory = i0.ɵɵgetInheritedFactory(Dir)))(ɵt || Dir); }; })();',
+        '/*@__PURE__*/ (() => { let ɵDir_BaseFactory; return function Dir_Factory(__ngFactoryType__) { return (ɵDir_BaseFactory || (ɵDir_BaseFactory = i0.ɵɵgetInheritedFactory(Dir)))(__ngFactoryType__ || Dir); }; })();',
       );
     });
 
@@ -5593,12 +5782,14 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'cmp-a',
           template: '<cmp-b></cmp-b>',
+          standalone: false,
         })
         class CmpA {}
 
         @Component({
           selector: 'cmp-b',
           template: 'This is B',
+          standalone: false,
         })
         class CmpB {}
 
@@ -5642,6 +5833,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'comp',
           template: '<custom-el></custom-el>',
+          standalone: false,
         })
         class MyComp {}
         @NgModule({
@@ -5681,11 +5873,11 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-      @Component({selector: 'cmp', template: 'I am a component!'}) class TestComponent {}
-      @Directive({selector: 'dir'}) class TestDirective {}
+      @Component({selector: 'cmp', template: 'I am a component!', standalone: false}) class TestComponent {}
+      @Directive({selector: 'dir', standalone: false}) class TestDirective {}
       @Injectable() class TestInjectable {}
       @NgModule({declarations: [TestComponent, TestDirective]}) class TestNgModule {}
-      @Pipe({name: 'pipe'}) class TestPipe {}
+      @Pipe({name: 'pipe', standalone: false}) class TestPipe {}
     `,
       );
 
@@ -5703,11 +5895,11 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-      @Component({selector: 'cmp', template: 'I am a component!'}) class TestComponent {}
-      @Directive({selector: 'dir'}) class TestDirective {}
+      @Component({selector: 'cmp', template: 'I am a component!', standalone: false}) class TestComponent {}
+      @Directive({selector: 'dir', standalone: false}) class TestDirective {}
       @Injectable() class TestInjectable {}
       @NgModule({declarations: [TestComponent, TestDirective]}) class TestNgModule {}
-      @Pipe({name: 'pipe'}) class TestPipe {}
+      @Pipe({name: 'pipe', standalone: false}) class TestPipe {}
     `,
       );
 
@@ -5725,11 +5917,11 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-      @Component({selector: 'cmp', template: 'I am a component!'}) class TestComponent {}
-      @Directive({selector: 'dir'}) class TestDirective {}
+      @Component({selector: 'cmp', template: 'I am a component!', standalone: false}) class TestComponent {}
+      @Directive({selector: 'dir', standalone: false}) class TestDirective {}
       @Injectable() class TestInjectable {}
       @NgModule({declarations: [TestComponent, TestDirective]}) class TestNgModule {}
-      @Pipe({name: 'pipe'}) class TestPipe {}
+      @Pipe({name: 'pipe', standalone: false}) class TestPipe {}
     `,
       );
 
@@ -5744,11 +5936,11 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-      @Component({selector: 'cmp', template: 'I am a component!'}) class TestComponent {}
-      @Directive({selector: 'dir'}) class TestDirective {}
+      @Component({selector: 'cmp', template: 'I am a component!', standalone: false}) class TestComponent {}
+      @Directive({selector: 'dir', standalone: false}) class TestDirective {}
       @Injectable() class TestInjectable {}
       @NgModule({declarations: [TestComponent, TestDirective]}) class TestNgModule {}
-      @Pipe({name: 'pipe'}) class TestPipe {}
+      @Pipe({name: 'pipe', standalone: false}) class TestPipe {}
     `,
       );
 
@@ -5770,11 +5962,11 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-      @Component({selector: 'cmp', template: 'I am a component!'}) class TestComponent {}
-      @Directive({selector: 'dir'}) class TestDirective {}
+      @Component({selector: 'cmp', template: 'I am a component!', standalone: false}) class TestComponent {}
+      @Directive({selector: 'dir', standalone: false}) class TestDirective {}
       @Injectable() class TestInjectable {}
       @NgModule({declarations: [TestComponent, TestDirective]}) class TestNgModule {}
-      @Pipe({name: 'pipe'}) class TestPipe {}
+      @Pipe({name: 'pipe', standalone: false}) class TestPipe {}
     `,
       );
 
@@ -5796,11 +5988,11 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, Injectable, NgModule, Pipe} from '@angular/core';
 
-      @Component({selector: 'cmp', template: 'I am a component!'}) class TestComponent {}
-      @Directive({selector: 'dir'}) class TestDirective {}
+      @Component({selector: 'cmp', template: 'I am a component!', standalone: false}) class TestComponent {}
+      @Directive({selector: 'dir', standalone: false}) class TestDirective {}
       @Injectable() class TestInjectable {}
       @NgModule({declarations: [TestComponent, TestDirective]}) class TestNgModule {}
-      @Pipe({name: 'pipe'}) class TestPipe {}
+      @Pipe({name: 'pipe', standalone: false}) class TestPipe {}
     `,
       );
 
@@ -5926,6 +6118,7 @@ runInEachFileSystem((os: string) => {
               </rect>
             </svg>
           \`,
+          standalone: false,
         })
         export class SvgCmp {}
         @NgModule({
@@ -6266,14 +6459,21 @@ runInEachFileSystem((os: string) => {
         `
       import {Component, Directive, NgModule} from '@angular/core';
 
-      @Directive({selector: '[test]'})
+      @Directive({
+        selector: '[test]',
+        standalone: false,
+      })
       class DirA {}
 
-      @Directive({selector: '[test]'})
+      @Directive({
+        selector: '[test]',
+        standalone: false,
+      })
       class DirB {}
 
       @Component({
         template: '<div test></div>',
+        standalone: false,
       })
       class Cmp {}
 
@@ -6300,6 +6500,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'cyclic-component',
           template: 'Importing this causes a cycle',
+          standalone: false,
         })
         export class CyclicComponent {}
 
@@ -6318,6 +6519,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'normal-component',
           template: '<cyclic-component></cyclic-component>',
+          standalone: false,
         })
         export class NormalComponent {}
       `,
@@ -6351,6 +6553,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'a-cmp',
           template: '<b-cmp></b-cmp>',
+          standalone: false,
         })
         export class ACmp {}
       `,
@@ -6363,6 +6566,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'b-cmp',
           template: '<a-cmp></a-cmp>',
+          standalone: false,
         })
         export class BCmp {}
       `,
@@ -6394,6 +6598,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'a-cmp',
           template: '<b-cmp></b-cmp>',
+          standalone: false,
         })
         export class ACmp {}
       `,
@@ -6406,6 +6611,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'b-cmp',
           template: 'does not use a-cmp',
+          standalone: false,
         })
         export class BCmp {}
       `,
@@ -6435,6 +6641,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'a-cmp',
           template: '<b-cmp></b-cmp>',
+          standalone: false,
         })
         export class ACmp {}
       `,
@@ -6448,6 +6655,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'b-cmp',
           template: 'does not use a-cmp',
+          standalone: false,
         })
         export class BCmp {
           a: ACmp;
@@ -6479,12 +6687,14 @@ runInEachFileSystem((os: string) => {
               @Component({
                 selector: 'shared-one-cmp',
                 template: '<cyclic-cmp></cyclic-cmp>',
+                standalone: false,
               })
               export class SharedOne {}
 
               @Component({
                 selector: 'shared-two-cmp',
                 template: '<cyclic-cmp></cyclic-cmp>',
+                standalone: false,
               })
               export class SharedTwo {}
             `,
@@ -6498,6 +6708,7 @@ runInEachFileSystem((os: string) => {
               @Component({
                 selector: 'cyclic-cmp',
                 template: 'does not use shared components',
+                standalone: false,
               })
               export class CyclicCmp {
                 one: SharedOne;
@@ -6522,6 +6733,7 @@ runInEachFileSystem((os: string) => {
           @Component({
             selector: 'cyclic-component',
             template: 'Importing this causes a cycle',
+            standalone: false,
           })
           export class CyclicComponent {}
 
@@ -6540,6 +6752,7 @@ runInEachFileSystem((os: string) => {
           @Component({
             selector: 'normal-component',
             template: '<cyclic-component></cyclic-component>',
+            standalone: false,
           })
           export class NormalComponent {}
         `,
@@ -6553,6 +6766,7 @@ runInEachFileSystem((os: string) => {
           @Component({
             selector: 'other-component',
             template: 'An unused other component',
+            standalone: false,
           })
           export class OtherComponent {}
         `,
@@ -6577,6 +6791,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'cyclic-component',
           template: 'Importing this causes a cycle',
+          standalone: false,
         })
         export class CyclicComponent {}
 
@@ -6595,6 +6810,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'normal-component',
           template: '<cyclic-component></cyclic-component>',
+          standalone: false,
         })
         export class NormalComponent {}
       `,
@@ -6640,7 +6856,11 @@ runInEachFileSystem((os: string) => {
       const getComponentScript = (template: string): string => `
       import {Component, Directive, NgModule} from '@angular/core';
 
-      @Component({selector: 'my-cmp', template: \`${template}\`})
+      @Component({
+        selector: 'my-cmp',
+        template: \`${template}\`,
+        standalone: false,
+      })
       class Cmp {}
 
       @NgModule({declarations: [Cmp]})
@@ -6728,7 +6948,10 @@ runInEachFileSystem((os: string) => {
         `
         import {Directive, Input} from '@angular/core';
 
-        @Directive({selector: '[dir]'})
+        @Directive({
+          selector: '[dir]',
+          standalone: false,
+        })
         export class TestDir {
           @Input() noArgs: any;
           @Input('aliasedStringArg') stringArg: any;
@@ -6766,7 +6989,8 @@ runInEachFileSystem((os: string) => {
             {name: 'aliasedLiteral', alias: 'alisedLiteralAlias'},
             {name: 'requiredLiteral', required: true},
             {name: 'requiredAlisedLiteral', alias: 'requiredAlisedLiteralAlias', required: true}
-          ]
+          ],
+          standalone: false,
         })
         export class TestDir {
           plainLiteral: any;
@@ -6885,6 +7109,133 @@ runInEachFileSystem((os: string) => {
           'Is it missing an @NgModule annotation?',
         );
       });
+
+      it('should report if an NgModule imports itself', () => {
+        env.write(
+          'test.ts',
+          `
+          import {NgModule} from '@angular/core';
+
+          @NgModule({imports: [MyModule]})
+          export class MyModule {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('NgModule "import" field contains a cycle');
+      });
+
+      it('should report if an NgModule exports itself', () => {
+        env.write(
+          'test.ts',
+          `
+          import {NgModule} from '@angular/core';
+
+          @NgModule({exports: [MyModule]})
+          export class MyModule {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(1);
+        expect(diags[0].messageText).toBe('NgModule "export" field contains a cycle');
+      });
+
+      it('should report if an NgModule imports itself transitively', () => {
+        env.write(
+          'dep-2.ts',
+          `
+          import {NgModule} from '@angular/core';
+          import {MyModule} from './test';
+
+          @NgModule({imports: [MyModule]})
+          export class DepModule2 {}
+        `,
+        );
+
+        env.write(
+          'dep.ts',
+          `
+          import {NgModule} from '@angular/core';
+          import {DepModule2} from './dep-2';
+
+          @NgModule({imports: [DepModule2]})
+          export class DepModule {}
+        `,
+        );
+
+        env.write(
+          'test.ts',
+          `
+          import {NgModule} from '@angular/core';
+          import {DepModule} from './dep';
+
+          @NgModule({imports: [DepModule]})
+          export class MyModule {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(3);
+        expect(diags[0].messageText).toBe(
+          'This import contains errors, which may affect components that depend on this NgModule.',
+        );
+        expect(diags[1].messageText).toBe('NgModule "import" field contains a cycle');
+        expect(diags[2].messageText).toBe(
+          'This import contains errors, which may affect components that depend on this NgModule.',
+        );
+      });
+
+      it('should report if an NgModule imports itself via a forwardRef', () => {
+        env.write(
+          'test.ts',
+          `
+          import {NgModule, forwardRef} from '@angular/core';
+
+          @NgModule({imports: [forwardRef(() => MyModule)]})
+          export class DepModule {}
+
+          @NgModule({imports: [DepModule]})
+          export class MyModule {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(2);
+        expect(diags[0].messageText).toBe(
+          'This import contains errors, which may affect components that depend on this NgModule.',
+        );
+        expect(diags[1].messageText).toBe('NgModule "import" field contains a cycle');
+      });
+
+      it('should report if an NgModule imports itself via a forwardRef', () => {
+        env.write(
+          'test.ts',
+          `
+          import {NgModule, forwardRef} from '@angular/core';
+
+          @NgModule({imports: [forwardRef(() => ModB)]})
+          class ModA {}
+
+          @NgModule({imports: [forwardRef(() => ModC)]})
+          class ModB {}
+
+          @NgModule({imports: [ModB]})
+          class ModC {}
+        `,
+        );
+
+        const diags = env.driveDiagnostics();
+        expect(diags.length).toBe(3);
+        expect(diags[0].messageText).toBe(
+          'This import contains errors, which may affect components that depend on this NgModule.',
+        );
+        expect(diags[1].messageText).toBe(
+          'This import contains errors, which may affect components that depend on this NgModule.',
+        );
+        expect(diags[2].messageText).toBe('NgModule "import" field contains a cycle');
+      });
     });
 
     describe('when processing external directives', () => {
@@ -6911,6 +7262,7 @@ runInEachFileSystem((os: string) => {
 
         @Component({
           template: '<div test></div>',
+          standalone: false,
         })
         class Cmp {}
 
@@ -6960,6 +7312,7 @@ runInEachFileSystem((os: string) => {
 
         @Component({
           template: '<div test></div>',
+          standalone: false,
         })
         class Cmp {}
 
@@ -7137,7 +7490,10 @@ runInEachFileSystem((os: string) => {
         import {Directive, NgModule} from '@angular/core';
 
         // The directive is not exported.
-        @Directive({selector: 'test'})
+        @Directive({
+          selector: 'test',
+          standalone: false,
+        })
         class Dir {}
 
         // The module is, which makes the directive visible.
@@ -7192,7 +7548,10 @@ runInEachFileSystem((os: string) => {
         import {Directive, NgModule} from '@angular/core';
 
         // The directive is not exported.
-        @Directive({selector: 'test'})
+        @Directive({
+          selector: 'test',
+          standalone: false,
+        })
         class Dir {}
 
         // Neither is the module which declares it - meaning the directive is not visible here.
@@ -7227,7 +7586,10 @@ runInEachFileSystem((os: string) => {
         import {Directive, NgModule} from '@angular/core';
 
         // The directive is exported.
-        @Directive({selector: 'test'})
+        @Directive({
+          selector: 'test',
+          standalone: false,
+        })
         export class Dir {}
 
         // The module which declares it is not.
@@ -7257,7 +7619,10 @@ runInEachFileSystem((os: string) => {
         import {Directive, NgModule} from '@angular/core';
 
         // The directive is not exported.
-        @Directive({selector: 'test'})
+        @Directive({
+          selector: 'test',
+          standalone: false,
+        })
         class Dir {}
 
         // Neither is the module which declares it.
@@ -7323,6 +7688,7 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: 'dir',
+            standalone: false,
           })
           export class Dir {}
         `,
@@ -7333,7 +7699,10 @@ runInEachFileSystem((os: string) => {
           import {Directive, NgModule} from '@angular/core';
           import {Dir} from './dir';
 
-          @Directive({selector: '[inline]'})
+          @Directive({
+            selector: '[inline]',
+            standalone: false,
+          })
           export class InlineDir {}
 
           @NgModule({
@@ -7362,6 +7731,7 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: 'dir',
+            standalone: false,
           })
           export class Dir {}
 
@@ -7401,6 +7771,7 @@ runInEachFileSystem((os: string) => {
 
              @Directive({
                selector: 'dir',
+               standalone: false,
              })
              export class Dir {}
            `,
@@ -7435,6 +7806,7 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: 'dir',
+            standalone: false,
           })
           export class Dir {}
         `,
@@ -7505,6 +7877,7 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: 'dir',
+            standalone: false,
           })
           export class Dir {}
         `,
@@ -7516,6 +7889,7 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: 'dir',
+            standalone: false,
           })
           export class Dir {}
         `,
@@ -7548,6 +7922,7 @@ runInEachFileSystem((os: string) => {
 
              @Directive({
                selector: 'dir',
+               standalone: false,
              })
              export class Dir {}
            `,
@@ -7559,6 +7934,7 @@ runInEachFileSystem((os: string) => {
 
              @Directive({
                selector: 'dir',
+               standalone: false,
              })
              export class Dir {}
            `,
@@ -7618,6 +7994,7 @@ runInEachFileSystem((os: string) => {
           @Component({
             selector: 'test-cmp',
             template: '<div test></div>',
+            standalone: false,
           })
           class Cmp {}
 
@@ -7646,6 +8023,7 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: 'dir',
+            standalone: false,
           })
           export class Dir {}
         `,
@@ -7714,7 +8092,8 @@ runInEachFileSystem((os: string) => {
         import {Component, Directive, HostBinding, NgModule, Input} from '@angular/core';
 
         @Directive({
-          selector: '[unsafeAttrs]'
+          selector: '[unsafeAttrs]',
+          standalone: false,
         })
         class UnsafeAttrsDirective {
           @HostBinding('attr.href')
@@ -7740,7 +8119,8 @@ runInEachFileSystem((os: string) => {
 
         @Component({
           selector: 'foo',
-          template: '<a [unsafeAttrs]="ctxProp">Link Title</a>'
+          template: '<a [unsafeAttrs]="ctxProp">Link Title</a>',
+          standalone: false,
         })
         class FooCmp {
           ctxProp = '';
@@ -7771,7 +8151,8 @@ runInEachFileSystem((os: string) => {
         import {Component, Directive, HostBinding, Input, NgModule} from '@angular/core';
 
         @Directive({
-          selector: '[unsafeProps]'
+          selector: '[unsafeProps]',
+          standalone: false,
         })
         class UnsafePropsDirective {
           @HostBinding('href')
@@ -7797,7 +8178,8 @@ runInEachFileSystem((os: string) => {
 
         @Component({
           selector: 'foo',
-          template: '<a [unsafeProps]="ctxProp">Link Title</a>'
+          template: '<a [unsafeProps]="ctxProp">Link Title</a>',
+          standalone: false,
         })
         class FooCmp {
           ctxProp = '';
@@ -7902,6 +8284,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'cmp',
           template: '<div test></div>',
+          standalone: false,
         })
         export class Cmp {}
 
@@ -7963,6 +8346,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'cmp',
           template: '<div test></div>',
+          standalone: false,
         })
         export class Cmp {}
 
@@ -8018,7 +8402,10 @@ runInEachFileSystem((os: string) => {
         import {Directive, NgModule} from '@angular/core';
         import {ExternalModule} from './external';
 
-        @Directive({selector: '[foo]'})
+        @Directive({
+          selector: '[foo]',
+          standalone: false,
+        })
         export class FooDir {}
 
         @NgModule({
@@ -8037,6 +8424,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'index',
           template: '<div foo test lib></div>',
+          standalone: false,
         })
         export class IndexCmp {}
 
@@ -8091,7 +8479,10 @@ runInEachFileSystem((os: string) => {
         import {Directive, NgModule} from '@angular/core';
         import {ExternalModule} from './external';
 
-        @Directive({selector: '[foo]'})
+        @Directive({
+          selector: '[foo]',
+          standalone: false,
+        })
         export class FooDir {}
 
         @NgModule({
@@ -8110,6 +8501,7 @@ runInEachFileSystem((os: string) => {
         @Component({
           selector: 'index',
           template: '<div foo test lib></div>',
+          standalone: false,
         })
         export class IndexCmp {}
 
@@ -8134,7 +8526,10 @@ runInEachFileSystem((os: string) => {
           `
         import {Directive, NgModule} from '@angular/core';
 
-        @Directive({selector: 'test'})
+        @Directive({
+          selector: 'test',
+          standalone: false,
+        })
         export class TestDir {}
 
         @NgModule({
@@ -9197,7 +9592,8 @@ runInEachFileSystem((os: string) => {
 
           @Directive({
             selector: '[some-dir]',
-            providers: [NotAService]
+            providers: [NotAService],
+            standalone: false,
           })
           class SomeDirective {}
 
@@ -9226,7 +9622,8 @@ runInEachFileSystem((os: string) => {
           @Component({
             selector: 'some-comp',
             template: '',
-            providers: [NotAService]
+            providers: [NotAService],
+            standalone: false,
           })
           class SomeComponent {}
 
@@ -9255,7 +9652,8 @@ runInEachFileSystem((os: string) => {
           @Component({
             selector: 'some-comp',
             template: '',
-            viewProviders: [NotAService]
+            viewProviders: [NotAService],
+            standalone: false,
           })
           class SomeComponent {}
 
@@ -9278,7 +9676,8 @@ runInEachFileSystem((os: string) => {
           import {NgModule, Pipe} from '@angular/core';
 
           @Pipe({
-            name: 'some-pipe'
+            name: 'some-pipe',
+            standalone: false,
           })
           class SomePipe {}
 

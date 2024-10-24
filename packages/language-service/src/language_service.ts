@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {AST, TmplAstNode} from '@angular/compiler';
@@ -19,6 +19,7 @@ import ts from 'typescript';
 
 import {
   ApplyRefactoringProgressFn,
+  ApplyRefactoringResult,
   GetComponentLocationsForTemplateResponse,
   GetTcbResponse,
   GetTemplateLocationForComponentResponse,
@@ -45,16 +46,27 @@ import {
   getClassDeclFromDecoratorProp,
   getParentClassDeclaration,
   getPropertyAssignmentFromValue,
-} from './ts_utils';
+} from './utils/ts_utils';
 import {getTemplateInfoAtPosition, isTypeScriptFile} from './utils';
-import {allRefactorings} from './refactorings/refactoring';
+import {ActiveRefactoring, allRefactorings} from './refactorings/refactoring';
 
 type LanguageServiceConfig = Omit<PluginConfig, 'angularOnly'>;
+
+// Whether the language service should suppress the below for google3.
+const enableG3Suppression = false;
+
+// The Copybara config that syncs the language service into g3 will be patched to
+// always suppress any diagnostics in this list.
+// See `angular2/copy.bara.sky` for more information.
+const suppressDiagnosticsInG3: number[] = [
+  parseInt(`-99${ErrorCode.COMPONENT_RESOURCE_NOT_FOUND}`),
+];
 
 export class LanguageService {
   private options: CompilerOptions;
   readonly compilerFactory: CompilerFactory;
   private readonly codeFixes: CodeFixes;
+  private readonly activeRefactorings = new Map<string, ActiveRefactoring>();
 
   constructor(
     private readonly project: ts.server.Project,
@@ -82,12 +94,12 @@ export class LanguageService {
 
   getSemanticDiagnostics(fileName: string): ts.Diagnostic[] {
     return this.withCompilerAndPerfTracing(PerfPhase.LsDiagnostics, (compiler) => {
-      const diagnostics: ts.Diagnostic[] = [];
+      let diagnostics: ts.Diagnostic[] = [];
       if (isTypeScriptFile(fileName)) {
         const program = compiler.getCurrentProgram();
         const sourceFile = program.getSourceFile(fileName);
         if (sourceFile) {
-          const ngDiagnostics = compiler.getDiagnosticsForFile(sourceFile, OptimizeFor.SingleFile);
+          let ngDiagnostics = compiler.getDiagnosticsForFile(sourceFile, OptimizeFor.SingleFile);
           // There are several kinds of diagnostics returned by `NgCompiler` for a source file:
           //
           // 1. Angular-related non-template diagnostics from decorated classes within that
@@ -123,6 +135,14 @@ export class LanguageService {
             diagnostics.push(...compiler.getDiagnosticsForComponent(component));
           }
         }
+      }
+      if (this.config.suppressAngularDiagnosticCodes) {
+        diagnostics = diagnostics.filter(
+          (diag) => !this.config.suppressAngularDiagnosticCodes!.includes(diag.code),
+        );
+      }
+      if (enableG3Suppression) {
+        diagnostics = diagnostics.filter((diag) => !suppressDiagnosticsInG3.includes(diag.code));
       }
       return diagnostics;
     });
@@ -549,20 +569,40 @@ export class LanguageService {
     );
   }
 
-  applyRefactoring(
+  /**
+   * Computes edits for applying the specified refactoring.
+   *
+   * VSCode explicitly split code actions into two stages:
+   *
+   *  - 1) what actions are active?
+   *  - 2) what are the edits? <- if the user presses the button
+   *
+   * The latter stage may take longer to compute complex edits, perform
+   * analysis. This stage is currently implemented via our non-LSP standard
+   * `applyRefactoring` method. We implemented it in a way to support asynchronous
+   * computation, so that it can easily integrate with migrations that aren't
+   * synchronous/or compute edits in parallel.
+   */
+  async applyRefactoring(
     fileName: string,
     positionOrRange: number | ts.TextRange,
     refactorName: string,
     reportProgress: ApplyRefactoringProgressFn,
-  ): ts.RefactorEditInfo | undefined {
+  ): Promise<ApplyRefactoringResult | undefined> {
     const matchingRefactoring = allRefactorings.find((r) => r.id === refactorName);
     if (matchingRefactoring === undefined) {
       return undefined;
     }
 
     return this.withCompilerAndPerfTracing(PerfPhase.LSApplyRefactoring, (compiler) => {
-      return matchingRefactoring.computeEditsForFix(
+      if (!this.activeRefactorings.has(refactorName)) {
+        this.activeRefactorings.set(refactorName, new matchingRefactoring(this.project));
+      }
+      const activeRefactoring = this.activeRefactorings.get(refactorName)!;
+
+      return activeRefactoring.computeEditsForFix(
         compiler,
+        this.options,
         fileName,
         positionOrRange,
         reportProgress,

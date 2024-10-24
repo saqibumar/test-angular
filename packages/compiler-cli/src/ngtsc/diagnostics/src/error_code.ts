@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 /**
@@ -154,6 +154,11 @@ export enum ErrorCode {
    * pipe.
    */
   COMPONENT_UNKNOWN_DEFERRED_IMPORT = 2022,
+
+  /**
+   * Raised when a `standalone: false` component is declared but `strictStandalone` is set.
+   */
+  NON_STANDALONE_NOT_ALLOWED = 2023,
 
   SYMBOL_NOT_EXPORTED = 3001,
   /**
@@ -507,6 +512,11 @@ export enum ErrorCode {
    * ```
    */
   UNUSED_LET_DECLARATION = 8112,
+
+  /**
+   * A symbol referenced in `@Component.imports` isn't being used within the template.
+   */
+  UNUSED_STANDALONE_IMPORTS = 8113,
 
   /**
    * The template type-checking engine would need to generate an inline type check block for a

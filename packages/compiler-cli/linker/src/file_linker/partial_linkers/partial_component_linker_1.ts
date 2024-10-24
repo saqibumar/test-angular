@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {
   BoundTarget,
@@ -217,7 +217,7 @@ export class PartialComponentLinkerVersion1<TStatement, TExpression>
     }
 
     return {
-      ...toR3DirectiveMeta(metaObj, this.code, this.sourceUrl),
+      ...toR3DirectiveMeta(metaObj, this.code, this.sourceUrl, version),
       viewProviders: metaObj.has('viewProviders') ? metaObj.getOpaque('viewProviders') : null,
       template: {
         nodes: template.nodes,

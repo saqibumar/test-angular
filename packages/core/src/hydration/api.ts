@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {APP_BOOTSTRAP_LISTENER, ApplicationRef, whenStable} from '../application/application_ref';
@@ -29,21 +29,24 @@ import {isPlatformBrowser} from '../render3/util/misc_utils';
 import {TransferState} from '../transfer_state';
 import {performanceMarkFeature} from '../util/performance';
 import {NgZone} from '../zone';
+import {appendDeferBlocksToJSActionMap, withEventReplay} from './event_replay';
 
 import {cleanupDehydratedViews} from './cleanup';
 import {
   enableClaimDehydratedIcuCaseImpl,
   enablePrepareI18nBlockForHydrationImpl,
-  isI18nHydrationEnabled,
   setIsI18nHydrationSupportEnabled,
 } from './i18n';
 import {
   IS_HYDRATION_DOM_REUSE_ENABLED,
   IS_I18N_HYDRATION_ENABLED,
+  IS_INCREMENTAL_HYDRATION_ENABLED,
   PRESERVE_HOST_CONTENT,
 } from './tokens';
 import {enableRetrieveHydrationInfoImpl, NGH_DATA_KEY, SSR_CONTENT_INTEGRITY_MARKER} from './utils';
 import {enableFindMatchingDehydratedViewImpl} from './views';
+import {bootstrapIncrementalHydration, enableRetrieveDeferBlockDataImpl} from './incremental';
+import {enableHydrateFromBlockNameImpl} from './blocks';
 
 /**
  * Indicates whether the hydration-related code was added,
@@ -60,6 +63,12 @@ let isHydrationSupportEnabled = false;
  * whether i18n blocks are serialized or hydrated.
  */
 let isI18nHydrationRuntimeSupportEnabled = false;
+
+/**
+ * Indicates whether the incremental hydration code was added,
+ * prevents adding it multiple times.
+ */
+let isIncrementalHydrationRuntimeSupportEnabled = false;
 
 /**
  * Defines a period of time that Angular waits for the `ApplicationRef.isStable` to emit `true`.
@@ -107,6 +116,19 @@ function enableI18nHydrationRuntimeSupport() {
 }
 
 /**
+ * Brings the necessary incremental hydration code in tree-shakable manner.
+ * Similar to `enableHydrationRuntimeSupport`, the code is only
+ * present when `enableIncrementalHydrationRuntimeSupport` is invoked.
+ */
+function enableIncrementalHydrationRuntimeSupport() {
+  if (!isIncrementalHydrationRuntimeSupportEnabled) {
+    isIncrementalHydrationRuntimeSupportEnabled = true;
+    enableRetrieveDeferBlockDataImpl();
+    enableHydrateFromBlockNameImpl();
+  }
+}
+
+/**
  * Outputs a message with hydration stats into a console.
  */
 function printHydrationStats(injector: Injector) {
@@ -144,6 +166,21 @@ function whenStableWithTimeout(appRef: ApplicationRef, injector: Injector): Prom
 }
 
 /**
+ * Defines a name of an attribute that is added to the <body> tag
+ * in the `index.html` file in case a given route was configured
+ * with `RenderMode.Client`. 'cm' is an abbreviation for "Client Mode".
+ */
+export const CLIENT_RENDER_MODE_FLAG = 'ngcm';
+
+/**
+ * Checks whether the `RenderMode.Client` was defined for the current route.
+ */
+function isClientRenderModeEnabled(): boolean {
+  const doc = getDocument();
+  return isPlatformBrowser() && doc.body.hasAttribute(CLIENT_RENDER_MODE_FLAG);
+}
+
+/**
  * Returns a set of providers required to setup hydration support
  * for an application that is server side rendered. This function is
  * included into the `provideClientHydration` public API function from
@@ -164,19 +201,6 @@ export function withDomHydration(): EnvironmentProviders {
           // hydration annotations. Otherwise, keep hydration disabled.
           const transferState = inject(TransferState, {optional: true});
           isEnabled = !!transferState?.get(NGH_DATA_KEY, null);
-          if (!isEnabled && typeof ngDevMode !== 'undefined' && ngDevMode) {
-            const console = inject(Console);
-            const message = formatRuntimeError(
-              RuntimeErrorCode.MISSING_HYDRATION_ANNOTATIONS,
-              'Angular hydration was requested on the client, but there was no ' +
-                'serialized information present in the server response, ' +
-                'thus hydration was not enabled. ' +
-                'Make sure the `provideClientHydration()` is included into the list ' +
-                'of providers in the server part of the application configuration.',
-            );
-            // tslint:disable-next-line:no-console
-            console.warn(message);
-          }
         }
         if (isEnabled) {
           performanceMarkFeature('NgHydration');
@@ -191,14 +215,29 @@ export function withDomHydration(): EnvironmentProviders {
         // no way to turn it off (e.g. for tests), so we turn it off by default.
         setIsI18nHydrationSupportEnabled(false);
 
-        // Since this function is used across both server and client,
-        // make sure that the runtime code is only added when invoked
-        // on the client. Moving forward, the `isPlatformBrowser` check should
-        // be replaced with a tree-shakable alternative (e.g. `isServer`
-        // flag).
-        if (isPlatformBrowser() && inject(IS_HYDRATION_DOM_REUSE_ENABLED)) {
+        if (!isPlatformBrowser()) {
+          // Since this function is used across both server and client,
+          // make sure that the runtime code is only added when invoked
+          // on the client (see the `enableHydrationRuntimeSupport` function
+          // call below).
+          return;
+        }
+
+        if (inject(IS_HYDRATION_DOM_REUSE_ENABLED)) {
           verifySsrContentsIntegrity();
           enableHydrationRuntimeSupport();
+        } else if (typeof ngDevMode !== 'undefined' && ngDevMode && !isClientRenderModeEnabled()) {
+          const console = inject(Console);
+          const message = formatRuntimeError(
+            RuntimeErrorCode.MISSING_HYDRATION_ANNOTATIONS,
+            'Angular hydration was requested on the client, but there was no ' +
+              'serialized information present in the server response, ' +
+              'thus hydration was not enabled. ' +
+              'Make sure the `provideClientHydration()` is included into the list ' +
+              'of providers in the server part of the application configuration.',
+          );
+          // tslint:disable-next-line:no-console
+          console.warn(message);
         }
       },
       multi: true,
@@ -250,14 +289,53 @@ export function withI18nSupport(): Provider[] {
   return [
     {
       provide: IS_I18N_HYDRATION_ENABLED,
+      useFactory: () => inject(IS_HYDRATION_DOM_REUSE_ENABLED),
+    },
+    {
+      provide: ENVIRONMENT_INITIALIZER,
+      useValue: () => {
+        if (inject(IS_HYDRATION_DOM_REUSE_ENABLED)) {
+          enableI18nHydrationRuntimeSupport();
+          setIsI18nHydrationSupportEnabled(true);
+          performanceMarkFeature('NgI18nHydration');
+        }
+      },
+      multi: true,
+    },
+  ];
+}
+
+/**
+ * Returns a set of providers required to setup support for incremental hydration.
+ * Requires hydration to be enabled separately.
+ *
+ * @developerPreview
+ */
+export function withIncrementalHydration(): Provider[] {
+  return [
+    withEventReplay(),
+    {
+      provide: IS_INCREMENTAL_HYDRATION_ENABLED,
       useValue: true,
     },
     {
       provide: ENVIRONMENT_INITIALIZER,
       useValue: () => {
-        enableI18nHydrationRuntimeSupport();
-        setIsI18nHydrationSupportEnabled(true);
-        performanceMarkFeature('NgI18nHydration');
+        enableIncrementalHydrationRuntimeSupport();
+      },
+      multi: true,
+    },
+    {
+      provide: APP_BOOTSTRAP_LISTENER,
+      useFactory: () => {
+        if (isPlatformBrowser()) {
+          const injector = inject(Injector);
+          return () => {
+            bootstrapIncrementalHydration(getDocument(), injector);
+            appendDeferBlocksToJSActionMap(getDocument(), injector);
+          };
+        }
+        return () => {}; // noop for the server code
       },
       multi: true,
     },

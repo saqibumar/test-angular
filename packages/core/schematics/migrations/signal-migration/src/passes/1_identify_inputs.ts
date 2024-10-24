@@ -3,15 +3,15 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import assert from 'assert';
 import ts from 'typescript';
-import {ReferenceEmitter} from '../../../../../../compiler-cli/src/ngtsc/imports';
-import {DtsMetadataReader} from '../../../../../../compiler-cli/src/ngtsc/metadata';
-import {PartialEvaluator} from '../../../../../../compiler-cli/src/ngtsc/partial_evaluator';
-import {TypeScriptReflectionHost} from '../../../../../../compiler-cli/src/ngtsc/reflection';
+import {ReferenceEmitter} from '@angular/compiler-cli/src/ngtsc/imports';
+import {DtsMetadataReader} from '@angular/compiler-cli/src/ngtsc/metadata';
+import {PartialEvaluator} from '@angular/compiler-cli/src/ngtsc/partial_evaluator';
+import {TypeScriptReflectionHost} from '@angular/compiler-cli/src/ngtsc/reflection';
 import {extractDecoratorInput} from '../input_detection/input_decorator';
 import {isInputContainerNode} from '../input_detection/input_node';
 import {KnownInputs} from '../input_detection/known_inputs';
@@ -19,7 +19,7 @@ import {MigrationHost} from '../migration_host';
 import {MigrationResult} from '../result';
 import {getInputDescriptor} from '../utils/input_id';
 import {prepareAndCheckForConversion} from '../convert-input/prepare_and_check';
-import {isInputMemberIncompatibility} from '../input_detection/incompatibility';
+import {isFieldIncompatibility} from './problematic_patterns/incompatibility';
 
 /**
  * Phase where we iterate through all source files of the program (including `.d.ts`)
@@ -55,10 +55,15 @@ export function pass1__IdentifySourceFileAndDeclarationInputs(
       // track source file inputs in the result of this target.
       // these are then later migrated in the migration phase.
       if (decoratorInput.inSourceFile && host.isSourceFileForCurrentMigration(sf)) {
-        const conversionPreparation = prepareAndCheckForConversion(node, decoratorInput, checker);
+        const conversionPreparation = prepareAndCheckForConversion(
+          node,
+          decoratorInput,
+          checker,
+          host.compilerOptions,
+        );
 
-        if (isInputMemberIncompatibility(conversionPreparation)) {
-          knownDecoratorInputs.markInputAsIncompatible(inputDescr, conversionPreparation);
+        if (isFieldIncompatibility(conversionPreparation)) {
+          knownDecoratorInputs.markFieldIncompatible(inputDescr, conversionPreparation);
           result.sourceInputs.set(inputDescr, null);
         } else {
           result.sourceInputs.set(inputDescr, conversionPreparation);

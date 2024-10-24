@@ -186,7 +186,7 @@ To set up a wildcard route, add the following code to your `routes` definition.
 
 <docs-code>
 
-{ path: '\*\*', component: <component-name> }
+{ path: '**', component: <component-name> }
 
 </docs-code>
 
@@ -392,8 +392,21 @@ The `goToItems()` method interprets the destination URI as relative to the activ
 ## Accessing query parameters and fragments
 
 Sometimes, a feature of your application requires accessing a part of a route, such as a query parameter or a fragment.
-The Tour of Heroes application at this stage in the tutorial uses a list view in which you can click on a hero to see details.
-The router uses an `id` to show the correct hero's details.
+In this example, the route contains an `id` parameter we can use to target a specific hero page.
+
+```ts
+import {ApplicationConfig} from "@angular/core";
+import {Routes} from '@angular/router';
+import {HeroListComponent} from './hero-list.component';
+
+export const routes: Routes = [
+  {path: 'hero/:id', component: HeroDetailComponent}
+];
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideRouter(routes)],
+};
+```
 
 First, import the following members in the component you want to navigate from.
 
@@ -460,6 +473,20 @@ gotoItems(hero: Hero) {
 
 You can configure your routes to lazy load modules, which means that Angular only loads modules as needed, rather than loading all modules when the application launches.
 Additionally, preload parts of your application in the background to improve the user experience.
+
+Any route can lazily load its routed, standalone component by using `loadComponent:`
+
+<docs-code header="Lazy loading a standalone component" language="typescript">
+
+const routes: Routes = [
+  {
+    path: 'lazy',
+    loadComponent: () => import('./lazy.component').then(c => c.LazyComponent)
+  }
+];
+</docs-code>
+This works as long as the loaded component is standalone.
+
 
 For more information on lazy loading and preloading see the dedicated guide [Lazy loading](guide/ngmodules/lazy-loading).
 
@@ -565,16 +592,19 @@ Consider the following router link that navigates from the root of the applicati
 
 You could also redefine the `AppComponent` template with Crisis Center routes exclusively:
 
-```ts
-template: `
-  <h1 class="title">Angular Router</h1>
-  <nav>
-    <a [routerLink]="['/crisis-center']">Crisis Center</a>
-    <a [routerLink]="['/crisis-center/1', { foo: 'foo' }]">Dragon Crisis</a>
-    <a [routerLink]="['/crisis-center/2']">Shark Crisis</a>
-  </nav>
-  <router-outlet></router-outlet>
-`
+```angular-ts
+@Component({
+  template: `
+    <h1 class="title">Angular Router</h1>
+    <nav>
+      <a [routerLink]="['/crisis-center']">Crisis Center</a>
+      <a [routerLink]="['/crisis-center/1', { foo: 'foo' }]">Dragon Crisis</a>
+      <a [routerLink]="['/crisis-center/2']">Shark Crisis</a>
+    </nav>
+    <router-outlet></router-outlet>
+  `
+})
+export class AppComponent {}
 ```
 
 In summary, you can write applications with one, two or more levels of routing.

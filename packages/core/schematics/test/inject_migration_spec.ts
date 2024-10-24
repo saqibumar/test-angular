@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {getSystemPath, normalize, virtualFs} from '@angular-devkit/core';
@@ -29,6 +29,7 @@ describe('inject migration', () => {
     backwardsCompatibleConstructors?: boolean;
     migrateAbstractClasses?: boolean;
     nonNullableOptional?: boolean;
+    _internalCombineMemberInitializers?: boolean;
   }) {
     return runner.runSchematic('inject-migration', options, tree);
   }
@@ -113,7 +114,7 @@ describe('inject migration', () => {
       ``,
       `@Directive()`,
       `class MyDir {`,
-      `  private foo = inject(FOO_TOKEN);`,
+      `  private foo = inject<Foo>(FOO_TOKEN);`,
       `}`,
     ]);
   });
@@ -270,7 +271,7 @@ describe('inject migration', () => {
       `  ]`,
       `})`,
       `class MyDir {`,
-      `  private foo = inject(FOO_TOKEN, { optional: true });`,
+      `  private foo = inject<Foo>(FOO_TOKEN, { optional: true });`,
       `}`,
     ]);
   });
@@ -900,6 +901,37 @@ describe('inject migration', () => {
     ]);
   });
 
+  it('should remove the constructor if it only has a super() call after the migration', async () => {
+    writeFile(
+      '/dir.ts',
+      [
+        `import { Directive } from '@angular/core';`,
+        `import { Parent } from './parent';`,
+        `import { SomeService } from './service';`,
+        ``,
+        `@Directive()`,
+        `class MyDir extends Parent {`,
+        `  constructor(private service: SomeService) {`,
+        `    super();`,
+        `  }`,
+        `}`,
+      ].join('\n'),
+    );
+
+    await runMigration();
+
+    expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+      `import { Directive, inject } from '@angular/core';`,
+      `import { Parent } from './parent';`,
+      `import { SomeService } from './service';`,
+      ``,
+      `@Directive()`,
+      `class MyDir extends Parent {`,
+      `  private service = inject(SomeService);`,
+      `}`,
+    ]);
+  });
+
   it('should be able to opt into generating backwards-compatible constructors for a class with existing members', async () => {
     writeFile(
       '/dir.ts',
@@ -981,6 +1013,44 @@ describe('inject migration', () => {
       ``,
       `  log() {`,
       `    console.log(this.foo, this.hello, this.goodbye);`,
+      `  }`,
+      `}`,
+    ]);
+  });
+
+  it('should not remove the constructor, even if it only has a super call, if backwards compatible constructors are enabled', async () => {
+    writeFile(
+      '/dir.ts',
+      [
+        `import { Directive } from '@angular/core';`,
+        `import { Parent } from './parent';`,
+        `import { SomeService } from './service';`,
+        ``,
+        `@Directive()`,
+        `class MyDir extends Parent {`,
+        `  constructor(private service: SomeService) {`,
+        `    super();`,
+        `  }`,
+        `}`,
+      ].join('\n'),
+    );
+
+    await runMigration({backwardsCompatibleConstructors: true});
+
+    expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+      `import { Directive, inject } from '@angular/core';`,
+      `import { Parent } from './parent';`,
+      `import { SomeService } from './service';`,
+      ``,
+      `@Directive()`,
+      `class MyDir extends Parent {`,
+      `  private service = inject(SomeService);`,
+      ``,
+      `  /** Inserted by Angular inject() migration for backwards compatibility */`,
+      `  constructor(...args: unknown[]);`,
+      ``,
+      `  constructor() {`,
+      `    super();`,
       `  }`,
       `}`,
     ]);
@@ -1338,5 +1408,481 @@ describe('inject migration', () => {
       `  readonly foo = inject(MyDir);`,
       `}`,
     ]);
+  });
+
+  it('should mark optional members if they correspond to optional parameters', async () => {
+    writeFile(
+      '/dir.ts',
+      [
+        `import { Directive, Optional } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  constructor(@Optional() public foo?: Foo) {}`,
+        `}`,
+      ].join('\n'),
+    );
+
+    await runMigration();
+
+    expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+      `import { Directive, inject } from '@angular/core';`,
+      `import { Foo } from 'foo';`,
+      ``,
+      `@Directive()`,
+      `class MyDir {`,
+      `  foo? = inject(Foo, { optional: true });`,
+      `}`,
+    ]);
+  });
+
+  it('should not mark private members as optional', async () => {
+    writeFile(
+      '/dir.ts',
+      [
+        `import { Directive, Optional } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  constructor(@Optional() private foo?: Foo) {}`,
+        `}`,
+      ].join('\n'),
+    );
+
+    await runMigration();
+
+    expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+      `import { Directive, inject } from '@angular/core';`,
+      `import { Foo } from 'foo';`,
+      ``,
+      `@Directive()`,
+      `class MyDir {`,
+      `  private foo = inject(Foo, { optional: true });`,
+      `}`,
+    ]);
+  });
+
+  describe('internal-only behavior', () => {
+    function runInternalMigration() {
+      return runMigration({_internalCombineMemberInitializers: true});
+    }
+
+    it('should inline initializers that depend on DI', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive, Inject } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          `import { BAR_TOKEN, Bar } from './bar';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private value: number;`,
+          `  private otherValue: string;`,
+          ``,
+          `  constructor(private foo: Foo, @Inject(BAR_TOKEN) readonly bar: Bar) {`,
+          `    this.value = this.foo.getValue();`,
+          `    this.otherValue = this.bar.getOtherValue();`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        `import { BAR_TOKEN, Bar } from './bar';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        `  readonly bar = inject<Bar>(BAR_TOKEN);`,
+        ``,
+        `  private value: number = this.foo.getValue();`,
+        `  private otherValue: string = this.bar.getOtherValue();`,
+        `}`,
+      ]);
+    });
+
+    it('should not inline initializers that access injected parameters without `this`', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive, Inject } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          `import { BAR_TOKEN, Bar } from './bar';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private value: number;`,
+          `  private otherValue: string;`,
+          ``,
+          `  constructor(private foo: Foo, @Inject(BAR_TOKEN) readonly bar: Bar) {`,
+          `    this.value = this.foo.getValue();`,
+          `    this.otherValue = bar.getOtherValue();`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        `import { BAR_TOKEN, Bar } from './bar';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        `  readonly bar = inject<Bar>(BAR_TOKEN);`,
+        ``,
+        `  private value: number = this.foo.getValue();`,
+        `  private otherValue: string;`,
+        ``,
+        `  constructor() {`,
+        `    const bar = this.bar;`,
+        ``,
+        `    this.otherValue = bar.getOtherValue();`,
+        `  }`,
+        `}`,
+      ]);
+    });
+
+    it('should not inline initializers that depend on local symbols from the constructor', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private value: number;`,
+          ``,
+          `  constructor(private foo: Foo) {`,
+          `    const val = 456;`,
+          `    this.value = this.foo.getValue([123, [val]]);`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        ``,
+        `  private value: number;`,
+        ``,
+        `  constructor() {`,
+        `    const val = 456;`,
+        `    this.value = this.foo.getValue([123, [val]]);`,
+        `  }`,
+        `}`,
+      ]);
+    });
+
+    it('should inline initializers that depend on local symbols defined outside of the constructor', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `const val = 456;`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private value: number;`,
+          ``,
+          `  constructor(private foo: Foo) {`,
+          `    this.value = this.getValue(this.foo, extra);`,
+          `  }`,
+          ``,
+          `  private getValue(foo: Foo, extra: number) {`,
+          `    return foo.getValue([123, [extra]]);`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `const val = 456;`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        ``,
+        `  private value: number = this.getValue(this.foo, extra);`,
+        ``,
+        `  private getValue(foo: Foo, extra: number) {`,
+        `    return foo.getValue([123, [extra]]);`,
+        `  }`,
+        `}`,
+      ]);
+    });
+
+    it('should inline initializers defined through an element access', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive, Inject } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          `import { BAR_TOKEN, Bar } from './bar';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private 'my-value': number;`,
+          `  private 'my-other-value': string;`,
+          ``,
+          `  constructor(private foo: Foo, @Inject(BAR_TOKEN) readonly bar: Bar) {`,
+          `    this['my-value'] = this.foo.getValue();`,
+          `    this['my-other-value'] = this.bar.getOtherValue();`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        `import { BAR_TOKEN, Bar } from './bar';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        `  readonly bar = inject<Bar>(BAR_TOKEN);`,
+        ``,
+        `  private 'my-value': number = this.foo.getValue();`,
+        `  private 'my-other-value': string = this.bar.getOtherValue();`,
+        `}`,
+      ]);
+    });
+
+    it('should take the first initializer for properties initialized multiple times', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private value: number;`,
+          ``,
+          `  constructor(private foo: Foo) {`,
+          `    this.value = this.foo.getValue();`,
+          ``,
+          `    this.value = this.foo.getOtherValue();`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        ``,
+        `  private value: number = this.foo.getValue();`,
+        ``,
+        `  constructor() {`,
+        ``,
+        `    this.value = this.foo.getOtherValue();`,
+        `  }`,
+        `}`,
+      ]);
+    });
+
+    it('should not inline initializers that are not at the top level', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive, Optional } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private value: number;`,
+          ``,
+          `  constructor(@Optional() private foo: Foo | null) {`,
+          `    if (this.foo) {`,
+          `      this.value = this.foo.getValue();`,
+          `    }`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo, { optional: true });`,
+        ``,
+        `  private value: number;`,
+        ``,
+        `  constructor() {`,
+        `    if (this.foo) {`,
+        `      this.value = this.foo.getValue();`,
+        `    }`,
+        `  }`,
+        `}`,
+      ]);
+    });
+
+    it('should inline initializers that have expressions using local parameters', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private ids: number[];`,
+          `  private names: string[];`,
+          ``,
+          `  constructor(private foo: Foo) {`,
+          `    this.ids = this.foo.getValue().map(val => val.id);`,
+          `    this.names = this.foo.getValue().map(function(current) { return current.name; });`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        ``,
+        `  private ids: number[] = this.foo.getValue().map(val => val.id);`,
+        `  private names: string[] = this.foo.getValue().map(function (current) { return current.name; });`,
+        `}`,
+      ]);
+    });
+
+    it('should inline initializers that have expressions using local variables', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  private ids: number[];`,
+          `  private names: string[];`,
+          ``,
+          `  constructor(private foo: Foo) {`,
+          `    this.ids = this.foo.getValue().map(val => {`,
+          `       const id = val.id;`,
+          `       return id;`,
+          `    });`,
+          `    this.names = this.foo.getValue().map(function(current) {`,
+          `      const name = current.name;`,
+          `      return name;`,
+          `    });`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        ``,
+        // The indentation of the closing braces here is slightly off,
+        // but it's not a problem because this code is internal-only.
+        `  private ids: number[] = this.foo.getValue().map(val => {`,
+        `    const id = val.id;`,
+        `    return id;`,
+        `});`,
+        `  private names: string[] = this.foo.getValue().map(function (current) {`,
+        `    const name = current.name;`,
+        `    return name;`,
+        `});`,
+        `}`,
+      ]);
+    });
+
+    it('should account for doc strings when inlining initializers', async () => {
+      writeFile(
+        '/dir.ts',
+        [
+          `import { Directive } from '@angular/core';`,
+          `import { Foo } from 'foo';`,
+          ``,
+          `@Directive()`,
+          `class MyDir {`,
+          `  /** Value of Foo */`,
+          `  private readonly value: number;`,
+          ``,
+          `  /** ID of Foo */`,
+          `  id: string;`,
+          ``,
+          `  constructor(private foo: Foo) {`,
+          `    this.value = this.foo.getValue();`,
+          `    this.id = this.foo.getId();`,
+          `  }`,
+          `}`,
+        ].join('\n'),
+      );
+
+      await runInternalMigration();
+
+      expect(tree.readContent('/dir.ts').split('\n')).toEqual([
+        `import { Directive, inject } from '@angular/core';`,
+        `import { Foo } from 'foo';`,
+        ``,
+        `@Directive()`,
+        `class MyDir {`,
+        `  private foo = inject(Foo);`,
+        ``,
+        `  /** Value of Foo */`,
+        `  private readonly value: number = this.foo.getValue();`,
+        ``,
+        `  /** ID of Foo */`,
+        `  id: string = this.foo.getId();`,
+        `}`,
+      ]);
+    });
   });
 });

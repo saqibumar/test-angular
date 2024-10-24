@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {NgFor} from '@angular/common';
@@ -275,6 +275,30 @@ describe('control flow - if', () => {
     const fixture = TestBed.createComponent(TestComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toBe('Something');
+  });
+
+  it('should support a condition with the a typeof expression', () => {
+    @Component({
+      standalone: true,
+      template: `
+          @if (typeof value === 'string') {
+            {{value.length}}
+          } @else {
+            {{value}}
+          }
+        `,
+    })
+    class TestComponent {
+      value: string | number = 'string';
+    }
+
+    const fixture = TestBed.createComponent(TestComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent.trim()).toBe('6');
+
+    fixture.componentInstance.value = 42;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent.trim()).toBe('42');
   });
 
   describe('content projection', () => {

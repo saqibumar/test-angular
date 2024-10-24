@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DOCUMENT, isPlatformServer, ɵgetDOM as getDOM} from '@angular/common';
@@ -243,10 +243,8 @@ class DefaultDomRenderer2 implements Renderer2 {
     }
   }
 
-  removeChild(parent: any, oldChild: any): void {
-    if (parent) {
-      parent.removeChild(oldChild);
-    }
+  removeChild(_parent: any, oldChild: any): void {
+    oldChild.remove();
   }
 
   selectRootElement(selectorOrNode: string | any, preserveContent?: boolean): any {
@@ -448,8 +446,8 @@ class ShadowDomRenderer extends DefaultDomRenderer2 {
   override insertBefore(parent: any, newChild: any, refChild: any): void {
     return super.insertBefore(this.nodeOrShadowRoot(parent), newChild, refChild);
   }
-  override removeChild(parent: any, oldChild: any): void {
-    return super.removeChild(this.nodeOrShadowRoot(parent), oldChild);
+  override removeChild(_parent: any, oldChild: any): void {
+    return super.removeChild(null, oldChild);
   }
   override parentNode(node: any): any {
     return this.nodeOrShadowRoot(super.parentNode(this.nodeOrShadowRoot(node)));
@@ -462,6 +460,7 @@ class ShadowDomRenderer extends DefaultDomRenderer2 {
 
 class NoneEncapsulationDomRenderer extends DefaultDomRenderer2 {
   private readonly styles: string[];
+  private readonly styleUrls?: string[];
 
   constructor(
     eventManager: EventManager,
@@ -475,10 +474,11 @@ class NoneEncapsulationDomRenderer extends DefaultDomRenderer2 {
   ) {
     super(eventManager, doc, ngZone, platformIsServer);
     this.styles = compId ? shimStylesContent(compId, component.styles) : component.styles;
+    this.styleUrls = component.getExternalStyles?.(compId);
   }
 
   applyStyles(): void {
-    this.sharedStylesHost.addStyles(this.styles);
+    this.sharedStylesHost.addStyles(this.styles, this.styleUrls);
   }
 
   override destroy(): void {
@@ -486,7 +486,7 @@ class NoneEncapsulationDomRenderer extends DefaultDomRenderer2 {
       return;
     }
 
-    this.sharedStylesHost.removeStyles(this.styles);
+    this.sharedStylesHost.removeStyles(this.styles, this.styleUrls);
   }
 }
 

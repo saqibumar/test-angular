@@ -253,7 +253,7 @@ export class NodeRuntimeSandbox {
       this.setLoading(LoadingStep.READY);
   }
 
-  async writeFile(path: string, content: string | Buffer): Promise<void> {
+  async writeFile(path: string, content: string | Uint8Array): Promise<void> {
     const webContainer = await this.webContainerPromise!;
 
     try {
@@ -385,7 +385,9 @@ export class NodeRuntimeSandbox {
     this.setLoading(LoadingStep.BOOT);
 
     if (!this.webContainerPromise) {
-      this.webContainerPromise = WebContainer.boot();
+      this.webContainerPromise = WebContainer.boot({
+        workdirName: 'angular',
+      });
     }
     return await this.webContainerPromise;
   }

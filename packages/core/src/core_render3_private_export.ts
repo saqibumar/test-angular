@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // we reexport these symbols just so that they are retained during the dead code elimination
@@ -177,6 +177,7 @@ export {
   ɵɵsetNgModuleScope,
   ɵɵgetComponentDepsFactory,
   ɵɵStandaloneFeature,
+  ɵɵExternalStylesFeature,
   ɵɵstyleMap,
   ɵɵstyleMapInterpolate1,
   ɵɵstyleMapInterpolate2,
@@ -217,6 +218,14 @@ export {
   ɵɵdeferPrefetchOnInteraction,
   ɵɵdeferPrefetchOnViewport,
   ɵɵdeferEnableTimerScheduling,
+  ɵɵdeferHydrateWhen,
+  ɵɵdeferHydrateNever,
+  ɵɵdeferHydrateOnIdle,
+  ɵɵdeferHydrateOnImmediate,
+  ɵɵdeferHydrateOnTimer,
+  ɵɵdeferHydrateOnHover,
+  ɵɵdeferHydrateOnInteraction,
+  ɵɵdeferHydrateOnViewport,
   ɵɵtext,
   ɵɵtextInterpolate,
   ɵɵtextInterpolate1,
@@ -240,6 +249,7 @@ export {
   ɵɵdeclareLet,
   ɵɵstoreLet,
   ɵɵreadContextLet,
+  ɵɵreplaceMetadata,
 } from './render3/index';
 export {CONTAINER_HEADER_OFFSET as ɵCONTAINER_HEADER_OFFSET} from './render3/interfaces/container';
 export {LContext as ɵLContext} from './render3/interfaces/context';
@@ -293,13 +303,11 @@ export {
 } from './sanitization/sanitization';
 export {ɵɵvalidateIframeAttribute} from './sanitization/iframe_attrs_validation';
 export {noSideEffects as ɵnoSideEffects} from './util/closure';
-export {
-  AfterRenderEventManager as ɵAfterRenderEventManager,
-  internalAfterNextRender as ɵinternalAfterNextRender,
-} from './render3/after_render_hooks';
+export {AfterRenderManager as ɵAfterRenderManager} from './render3/after_render/manager';
 export {
   depsTracker as ɵdepsTracker,
   USE_RUNTIME_DEPS_TRACKER_FOR_JIT as ɵUSE_RUNTIME_DEPS_TRACKER_FOR_JIT,
 } from './render3/deps_tracker/deps_tracker';
 export {generateStandaloneInDeclarationsError as ɵgenerateStandaloneInDeclarationsError} from './render3/jit/module';
 export {getAsyncClassMetadataFn as ɵgetAsyncClassMetadataFn} from './render3/metadata';
+export {NG_STANDALONE_DEFAULT_VALUE as ɵNG_STANDALONE_DEFAULT_VALUE} from './render3/standalone-default-value';

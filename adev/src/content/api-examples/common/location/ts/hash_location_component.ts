@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 // #docregion LocationComponent
@@ -24,6 +24,7 @@ import {Component} from '@angular/core';
     <code>{{ location.normalize('foo/bar') }}</code>
     <br />
   `,
+  standalone: false,
 })
 export class HashLocationComponent {
   location: Location;

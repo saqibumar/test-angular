@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -49,6 +49,7 @@ import {
   unwrapExpression,
   wrapTypeReference,
 } from '../common';
+import {NG_STANDALONE_DEFAULT_VALUE} from '../common/src/standalone-default-value';
 
 export interface PipeHandlerData {
   meta: R3PipeMetadata;
@@ -95,6 +96,7 @@ export class PipeDecoratorHandler
     private includeClassMetadata: boolean,
     private readonly compilationMode: CompilationMode,
     private readonly generateExtraImportsInLocalMode: boolean,
+    private readonly strictStandalone: boolean,
   ) {}
 
   readonly precedence = HandlerPrecedence.PRIMARY;
@@ -175,7 +177,7 @@ export class PipeDecoratorHandler
       pure = pureValue;
     }
 
-    let isStandalone = false;
+    let isStandalone = NG_STANDALONE_DEFAULT_VALUE;
     if (pipe.has('standalone')) {
       const expr = pipe.get('standalone')!;
       const resolved = this.evaluator.evaluate(expr);
@@ -183,6 +185,14 @@ export class PipeDecoratorHandler
         throw createValueHasWrongTypeError(expr, resolved, `standalone flag must be a boolean`);
       }
       isStandalone = resolved;
+
+      if (!isStandalone && this.strictStandalone) {
+        throw new FatalDiagnosticError(
+          ErrorCode.NON_STANDALONE_NOT_ALLOWED,
+          expr,
+          `Only standalone pipes are allowed when 'strictStandalone' is enabled.`,
+        );
+      }
     }
 
     return {

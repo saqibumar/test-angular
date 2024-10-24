@@ -3,12 +3,12 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy} from '../change_detection/constants';
 import {formatRuntimeError, RuntimeErrorCode} from '../errors';
-import {Mutable, Type} from '../interface/type';
+import {Type, Writable} from '../interface/type';
 import {NgModuleDef} from '../metadata/ng_module_def';
 import {SchemaMetadata} from '../metadata/schema';
 import {ViewEncapsulation} from '../metadata/view';
@@ -338,14 +338,14 @@ interface ComponentDefinition<T> extends Omit<DirectiveDefinition<T>, 'features'
  */
 export function ɵɵdefineComponent<T>(
   componentDefinition: ComponentDefinition<T>,
-): Mutable<ComponentDef<any>, keyof ComponentDef<any>> {
+): ComponentDef<any> {
   return noSideEffects(() => {
     // Initialize ngDevMode. This must be the first statement in ɵɵdefineComponent.
     // See the `initNgDevMode` docstring for more information.
     (typeof ngDevMode === 'undefined' || ngDevMode) && initNgDevMode();
 
     const baseDef = getNgDirectiveDef(componentDefinition as DirectiveDefinition<T>);
-    const def: Mutable<ComponentDef<T>, keyof ComponentDef<T>> = {
+    const def: Writable<ComponentDef<T>> = {
       ...baseDef,
       decls: componentDefinition.decls,
       vars: componentDefinition.vars,
@@ -357,6 +357,7 @@ export function ɵɵdefineComponent<T>(
       pipeDefs: null!, // assigned in noSideEffects
       dependencies: (baseDef.standalone && componentDefinition.dependencies) || null,
       getStandaloneInjector: null,
+      getExternalStyles: null,
       signals: componentDefinition.signals ?? false,
       data: componentDefinition.data || {},
       encapsulation: componentDefinition.encapsulation || ViewEncapsulation.Emulated,
@@ -557,7 +558,7 @@ function parseAndConvertBindingsForDefinition<T>(
  */
 export function ɵɵdefineDirective<T>(
   directiveDefinition: DirectiveDefinition<T>,
-): Mutable<DirectiveDef<any>, keyof DirectiveDef<any>> {
+): DirectiveDef<any> {
   return noSideEffects(() => {
     const def = getNgDirectiveDef(directiveDefinition);
     initFeatures(def);
@@ -635,6 +636,7 @@ export function getPipeDef<T>(type: any): PipeDef<T> | null {
  */
 export function isStandalone(type: Type<unknown>): boolean {
   const def = getComponentDef(type) || getDirectiveDef(type) || getPipeDef(type);
+  // TODO: standalone as default value (invert the condition)
   return def !== null ? def.standalone : false;
 }
 
@@ -648,9 +650,7 @@ export function getNgModuleDef<T>(type: any, throwNotFound?: boolean): NgModuleD
   return ngModuleDef;
 }
 
-function getNgDirectiveDef<T>(
-  directiveDefinition: DirectiveDefinition<T>,
-): Mutable<DirectiveDef<T>, keyof DirectiveDef<T>> {
+function getNgDirectiveDef<T>(directiveDefinition: DirectiveDefinition<T>): DirectiveDef<T> {
   const declaredInputs: Record<string, string> = {};
 
   return {
@@ -665,6 +665,7 @@ function getNgDirectiveDef<T>(
     inputTransforms: null,
     inputConfig: directiveDefinition.inputs || EMPTY_OBJ,
     exportAs: directiveDefinition.exportAs || null,
+    // TODO: standalone as default value (invert the condition)
     standalone: directiveDefinition.standalone === true,
     signals: directiveDefinition.signals === true,
     selectors: directiveDefinition.selectors || EMPTY_ARRAY,
@@ -679,11 +680,7 @@ function getNgDirectiveDef<T>(
   };
 }
 
-function initFeatures<T>(
-  definition:
-    | Mutable<DirectiveDef<T>, keyof DirectiveDef<T>>
-    | Mutable<ComponentDef<T>, keyof ComponentDef<T>>,
-): void {
+function initFeatures<T>(definition: DirectiveDef<T> | ComponentDef<T>): void {
   definition.features?.forEach((fn) => fn(definition));
 }
 

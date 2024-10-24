@@ -10,7 +10,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  EnvironmentInjector,
+  Injector,
   afterNextRender,
   computed,
   effect,
@@ -22,7 +22,7 @@ import {
 import ApiItemsSection from '../api-items-section/api-items-section.component';
 import {FormsModule} from '@angular/forms';
 import {SlideToggle, TextField} from '@angular/docs';
-import {NgFor, NgIf} from '@angular/common';
+import {Params, Router} from '@angular/router';
 import {ApiItemType} from '../interfaces/api-item-type';
 import {ApiReferenceManager} from './api-reference-manager.service';
 import ApiItemLabel from '../api-item-label/api-item-label.component';
@@ -34,24 +34,16 @@ export const ALL_STATUSES_KEY = 'All';
 @Component({
   selector: 'adev-reference-list',
   standalone: true,
-  imports: [
-    NgFor,
-    NgIf,
-    ApiItemsSection,
-    ApiItemLabel,
-    FormsModule,
-    SlideToggle,
-    TextField,
-    ApiLabel,
-  ],
+  imports: [ApiItemsSection, ApiItemLabel, FormsModule, SlideToggle, TextField, ApiLabel],
   templateUrl: './api-reference-list.component.html',
   styleUrls: ['./api-reference-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ApiReferenceList {
   private readonly apiReferenceManager = inject(ApiReferenceManager);
+  private readonly router = inject(Router);
   filterInput = viewChild.required(TextField, {read: ElementRef});
-  private readonly injector = inject(EnvironmentInjector);
+  private readonly injector = inject(Injector);
 
   private readonly allGroups = this.apiReferenceManager.apiGroups;
 
@@ -71,9 +63,28 @@ export default class ApiReferenceList {
         {injector: this.injector},
       );
     });
+
+    effect(
+      () => {
+        const params: Params = {
+          'query': this.query() ? this.query() : null,
+          'type': this.type() ? this.type() : null,
+        };
+
+        this.router.navigate([], {
+          queryParams: params,
+          replaceUrl: true,
+          preserveFragment: true,
+          info: {
+            disableScrolling: true,
+          },
+        });
+      },
+      {allowSignalWrites: true},
+    );
   }
 
-  query = signal('');
+  query = model<string | undefined>('');
   includeDeprecated = signal(false);
 
   type = model<string | undefined>(ALL_STATUSES_KEY);
@@ -87,8 +98,10 @@ export default class ApiReferenceList {
         id: group.id,
         items: group.items.filter((apiItem) => {
           return (
-            (this.query()
-              ? apiItem.title.toLocaleLowerCase().includes(this.query().toLocaleLowerCase())
+            (this.query() !== undefined
+              ? apiItem.title
+                  .toLocaleLowerCase()
+                  .includes((this.query() as string).toLocaleLowerCase())
               : true) &&
             (this.includeDeprecated() ? true : apiItem.isDeprecated === this.includeDeprecated()) &&
             (this.type() === undefined ||

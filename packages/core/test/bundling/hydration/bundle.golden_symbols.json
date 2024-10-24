@@ -12,7 +12,10 @@
     "name": "APP_INITIALIZER"
   },
   {
-    "name": "AfterRenderEventManager"
+    "name": "AfterRenderManager"
+  },
+  {
+    "name": "AfterRenderPhase"
   },
   {
     "name": "AnonymousSubject"
@@ -102,6 +105,9 @@
     "name": "DEFAULT_APP_ID"
   },
   {
+    "name": "DEFER_BLOCK_ID"
+  },
+  {
     "name": "DEHYDRATED_VIEWS"
   },
   {
@@ -121,9 +127,6 @@
   },
   {
     "name": "DomAdapter"
-  },
-  {
-    "name": "DomEventsPlugin"
   },
   {
     "name": "DomRendererFactory2"
@@ -150,6 +153,9 @@
     "name": "EVENT_MANAGER_PLUGINS"
   },
   {
+    "name": "EffectScheduler"
+  },
+  {
     "name": "ElementRef"
   },
   {
@@ -168,9 +174,6 @@
     "name": "ErrorHandler"
   },
   {
-    "name": "EventDelegationPlugin"
-  },
-  {
     "name": "EventEmitter"
   },
   {
@@ -178,9 +181,6 @@
   },
   {
     "name": "EventManagerPlugin"
-  },
-  {
-    "name": "GLOBAL_EVENT_DELEGATION"
   },
   {
     "name": "GenericBrowserDomAdapter"
@@ -280,6 +280,9 @@
   },
   {
     "name": "NGH_DATA_KEY"
+  },
+  {
+    "name": "NGH_DEFER_BLOCKS_KEY"
   },
   {
     "name": "NG_COMP_DEF"
@@ -393,7 +396,7 @@
     "name": "PRESERVE_HOST_CONTENT"
   },
   {
-    "name": "PendingTasks"
+    "name": "PendingTasksInternal"
   },
   {
     "name": "R3Injector"
@@ -430,6 +433,9 @@
   },
   {
     "name": "RuntimeError"
+  },
+  {
+    "name": "SCHEDULE_IN_ROOT_ZONE"
   },
   {
     "name": "SIGNAL"
@@ -513,7 +519,13 @@
     "name": "ZONELESS_SCHEDULER_DISABLED"
   },
   {
+    "name": "ZoneAwareEffectScheduler"
+  },
+  {
     "name": "ZoneStablePendingTask"
+  },
+  {
+    "name": "_AfterRenderImpl"
   },
   {
     "name": "_ComponentFactoryResolver"
@@ -547,9 +559,6 @@
   },
   {
     "name": "_getInsertInFrontOfRNodeWithI18n"
-  },
-  {
-    "name": "_global"
   },
   {
     "name": "_icuContainerIterate"
@@ -591,6 +600,9 @@
     "name": "allocLFrame"
   },
   {
+    "name": "angularZoneInstanceIdProperty"
+  },
+  {
     "name": "appendChild"
   },
   {
@@ -618,6 +630,9 @@
     "name": "assertConsumerNode"
   },
   {
+    "name": "assertNotDestroyed"
+  },
+  {
     "name": "attachPatchData"
   },
   {
@@ -628,6 +643,9 @@
   },
   {
     "name": "bloomHasToken"
+  },
+  {
+    "name": "bootstrap"
   },
   {
     "name": "calcSerializedContainerSize"
@@ -717,6 +735,9 @@
     "name": "createLView"
   },
   {
+    "name": "createLinkElement"
+  },
+  {
     "name": "createNodeInjector"
   },
   {
@@ -724,6 +745,9 @@
   },
   {
     "name": "createOperatorSubscriber"
+  },
+  {
+    "name": "createStyleElement"
   },
   {
     "name": "createTView"
@@ -769,9 +793,6 @@
   },
   {
     "name": "diPublicInInjector"
-  },
-  {
-    "name": "enableHydrationRuntimeSupport"
   },
   {
     "name": "enterDI"
@@ -909,9 +930,6 @@
     "name": "getOrCreateTNode"
   },
   {
-    "name": "getOriginalError"
-  },
-  {
     "name": "getOwnDefinition"
   },
   {
@@ -1021,6 +1039,12 @@
   },
   {
     "name": "invokeHostBindingsInCreationMode"
+  },
+  {
+    "name": "isAngularZoneProperty"
+  },
+  {
+    "name": "isApplicationBootstrapConfig"
   },
   {
     "name": "isArrayLike"
@@ -1167,9 +1191,6 @@
     "name": "nativeInsertBefore"
   },
   {
-    "name": "nativeParentNode"
-  },
-  {
     "name": "nativeRemoveNode"
   },
   {
@@ -1177,6 +1198,9 @@
   },
   {
     "name": "ngOnChangesSetInput"
+  },
+  {
+    "name": "ngZoneInstanceId"
   },
   {
     "name": "nonNull"
@@ -1221,6 +1245,9 @@
     "name": "processInjectorTypesWithProviders"
   },
   {
+    "name": "producerMarkClean"
+  },
+  {
     "name": "producerRemoveLiveConsumerAtIndex"
   },
   {
@@ -1251,6 +1278,9 @@
     "name": "removeDehydratedViews"
   },
   {
+    "name": "removeElements"
+  },
+  {
     "name": "removeFromArray"
   },
   {
@@ -1276,6 +1306,12 @@
   },
   {
     "name": "retrieveHydrationInfoImpl"
+  },
+  {
+    "name": "runEffectsInView"
+  },
+  {
+    "name": "runInInjectionContext"
   },
   {
     "name": "saveNameToExportMap"
@@ -1371,6 +1407,9 @@
     "name": "uniqueIdCounter"
   },
   {
+    "name": "unregisterLView"
+  },
+  {
     "name": "unwrapRNode"
   },
   {
@@ -1393,6 +1432,9 @@
   },
   {
     "name": "whenStableStore"
+  },
+  {
+    "name": "withDomHydration"
   },
   {
     "name": "writeDirectClass"

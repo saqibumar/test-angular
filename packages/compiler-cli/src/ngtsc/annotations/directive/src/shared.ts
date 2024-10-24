@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -84,6 +84,7 @@ import {tryParseSignalInputMapping} from './input_function';
 import {tryParseSignalModelMapping} from './model_function';
 import {tryParseInitializerBasedOutput} from './output_function';
 import {tryParseSignalQueryFromInitializer} from './query_functions';
+import {NG_STANDALONE_DEFAULT_VALUE} from '../../common/src/standalone-default-value';
 
 const EMPTY_OBJECT: {[key: string]: string} = {};
 
@@ -115,6 +116,7 @@ export function extractDirectiveMetadata(
   annotateForClosureCompiler: boolean,
   compilationMode: CompilationMode,
   defaultSelector: string | null,
+  strictStandalone: boolean,
 ):
   | {
       jitForced: false;
@@ -334,7 +336,7 @@ export function extractDirectiveMetadata(
         dep.token.value.name === 'TemplateRef',
     );
 
-  let isStandalone = false;
+  let isStandalone = NG_STANDALONE_DEFAULT_VALUE;
   if (directive.has('standalone')) {
     const expr = directive.get('standalone')!;
     const resolved = evaluator.evaluate(expr);
@@ -342,6 +344,14 @@ export function extractDirectiveMetadata(
       throw createValueHasWrongTypeError(expr, resolved, `standalone flag must be a boolean`);
     }
     isStandalone = resolved;
+
+    if (!isStandalone && strictStandalone) {
+      throw new FatalDiagnosticError(
+        ErrorCode.NON_STANDALONE_NOT_ALLOWED,
+        expr,
+        `Only standalone components/directives are allowed when 'strictStandalone' is enabled.`,
+      );
+    }
   }
   let isSignal = false;
   if (directive.has('signals')) {

@@ -2,7 +2,7 @@
 
 import {Input} from '@angular/core';
 
-// angular2/testing/catalyst
+// google3/javascript/angular2/testing/catalyst/fake_async
 // ^^ this allows the advisor to even consider this file.
 
 function it(msg: string, fn: () => void) {}
@@ -14,8 +14,7 @@ class MyComp {
 
 it('should work', () => {
   const inputs = {
-    hello: 'Damn',
-    // TODO:
+    hello: 'test',
   } as Partial<MyComp>;
   bootstrapTemplate('<my-comp [hello]="hello">', inputs);
 });

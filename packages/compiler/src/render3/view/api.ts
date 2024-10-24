@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ChangeDetectionStrategy, ViewEncapsulation} from '../../core';
@@ -235,6 +235,11 @@ export interface R3ComponentMetadata<DeclarationT extends R3TemplateDependency>
    * A collection of styling data that will be applied and scoped to the component.
    */
   styles: string[];
+
+  /**
+   * A collection of style paths for external stylesheets that will be applied and scoped to the component.
+   */
+  externalStyles?: string[];
 
   /**
    * An encapsulation policy for the component's styling.

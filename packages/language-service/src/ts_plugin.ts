@@ -3,13 +3,14 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
 
 import {
   ApplyRefactoringProgressFn,
+  ApplyRefactoringResult,
   GetComponentLocationsForTemplateResponse,
   GetTcbResponse,
   GetTemplateLocationForComponentResponse,
@@ -36,6 +37,15 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
 
     // Template files do not currently produce separate syntactic diagnostics and
     // are instead produced during the semantic diagnostic analysis.
+    return [];
+  }
+
+  function getSuggestionDiagnostics(fileName: string): ts.DiagnosticWithLocation[] {
+    if (!angularOnly && isTypeScriptFile(fileName)) {
+      return tsLS.getSuggestionDiagnostics(fileName);
+    }
+
+    // Template files do not currently produce separate suggestion diagnostics
     return [];
   }
 
@@ -272,7 +282,7 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     positionOrRange: number | ts.TextRange,
     refactorName: string,
     reportProgress: ApplyRefactoringProgressFn,
-  ): ts.RefactorEditInfo | undefined {
+  ): Promise<ApplyRefactoringResult | undefined> {
     return ngLS.applyRefactoring(fileName, positionOrRange, refactorName, reportProgress);
   }
 
@@ -334,6 +344,7 @@ export function create(info: ts.server.PluginCreateInfo): NgLanguageService {
     ...tsLS,
     getSyntacticDiagnostics,
     getSemanticDiagnostics,
+    getSuggestionDiagnostics,
     getTypeDefinitionAtPosition,
     getQuickInfoAtPosition,
     getDefinitionAtPosition,

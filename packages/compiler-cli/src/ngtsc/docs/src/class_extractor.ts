@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -85,6 +85,8 @@ class ClassExtractor {
       description: extractJsDocDescription(this.declaration),
       jsdocTags: extractJsDocTags(this.declaration),
       rawComment: extractRawJsDoc(this.declaration),
+      extends: this.extractInheritance(this.declaration),
+      implements: this.extractInterfaceConformance(this.declaration),
     };
   }
 
@@ -106,9 +108,12 @@ class ClassExtractor {
 
   /** Extract docs for a class's members (methods and properties).  */
   protected extractClassMember(memberDeclaration: MemberElement): MemberEntry | undefined {
-    if (this.isMethod(memberDeclaration) && !this.isImplementationForOverload(memberDeclaration)) {
+    if (this.isMethod(memberDeclaration)) {
       return this.extractMethod(memberDeclaration);
-    } else if (this.isProperty(memberDeclaration)) {
+    } else if (
+      this.isProperty(memberDeclaration) &&
+      !this.hasPrivateComputedProperty(memberDeclaration)
+    ) {
       return this.extractClassProperty(memberDeclaration);
     } else if (ts.isAccessor(memberDeclaration)) {
       return this.extractGetterSetter(memberDeclaration);
@@ -175,6 +180,36 @@ class ClassExtractor {
     };
   }
 
+  protected extractInheritance(
+    declaration: ClassDeclaration & ClassDeclarationLike,
+  ): string | undefined {
+    if (!declaration.heritageClauses) {
+      return undefined;
+    }
+
+    for (const clause of declaration.heritageClauses) {
+      if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+        // We are assuming a single class can only extend one class.
+        const types = clause.types;
+        if (types.length > 0) {
+          const baseClass: ts.ExpressionWithTypeArguments = types[0];
+          return baseClass.getText();
+        }
+      }
+    }
+
+    return undefined;
+  }
+  protected extractInterfaceConformance(
+    declaration: ClassDeclaration & ClassDeclarationLike,
+  ): string[] {
+    const implementClause = declaration.heritageClauses?.find(
+      (clause) => clause.token === ts.SyntaxKind.ImplementsKeyword,
+    );
+
+    return implementClause?.types.map((m) => m.getText()) ?? [];
+  }
+
   /** Gets the tags for a member (protected, readonly, static, etc.) */
   protected getMemberTags(member: MethodLike | PropertyLike): MemberTags[] {
     const tags: MemberTags[] = this.getMemberTagsFromModifiers(member.modifiers ?? []);
@@ -222,7 +257,7 @@ class ClassExtractor {
     const result: MemberElement[] = [];
     for (const member of [...members, ...staticMembers]) {
       // A member may have multiple declarations in the case of function overloads.
-      const memberDeclarations = member.getDeclarations() ?? [];
+      const memberDeclarations = this.filterMethodOverloads(member.getDeclarations() ?? []);
       for (const memberDeclaration of memberDeclarations) {
         if (this.isDocumentableMember(memberDeclaration)) {
           result.push(memberDeclaration);
@@ -231,6 +266,33 @@ class ClassExtractor {
     }
 
     return result;
+  }
+
+  /** The result only contains properties, method implementations and abstracts */
+  private filterMethodOverloads(declarations: ts.Declaration[]): ts.Declaration[] {
+    return declarations.filter((declaration, index) => {
+      if (ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration)) {
+        if (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Abstract) {
+          // TS enforces that all declarations of an abstract method are consecutive
+          const previousDeclaration = declarations[index - 1];
+
+          const samePreviousAbstractMethod =
+            previousDeclaration &&
+            ts.isMethodDeclaration(previousDeclaration) &&
+            ts.getCombinedModifierFlags(previousDeclaration) & ts.ModifierFlags.Abstract &&
+            previousDeclaration.name.getText() === declaration.name?.getText();
+
+          // We just need a reference to one member
+          // In the case of Abstract Methods we only want to return the first abstract.
+          // Others with the same name are considered as overloads
+          // Later on, the function extractor will handle overloads and implementation detection
+          return !samePreviousAbstractMethod;
+        }
+
+        return !!declaration.body;
+      }
+      return true;
+    });
   }
 
   /** Get the tags for a member that come from the declaration modifiers. */
@@ -332,15 +394,14 @@ class ClassExtractor {
     return modifiers.some((mod) => mod.kind === ts.SyntaxKind.AbstractKeyword);
   }
 
-  /** Gets whether a method is the concrete implementation for an overloaded function. */
-  private isImplementationForOverload(method: MethodLike): boolean | undefined {
-    // Method signatures (in an interface) are never implementations.
-    if (method.kind === ts.SyntaxKind.MethodSignature) return false;
-
-    const signature = this.typeChecker.getSignatureFromDeclaration(method);
+  /**
+   * Check wether a member has a private computed property name like [ɵWRITABLE_SIGNAL]
+   *
+   * This will prevent exposing private computed properties in the docs.
+   */
+  private hasPrivateComputedProperty(property: PropertyLike) {
     return (
-      signature &&
-      this.typeChecker.isImplementationOfOverload(signature.declaration as ts.SignatureDeclaration)
+      ts.isComputedPropertyName(property.name) && property.name.expression.getText().startsWith('ɵ')
     );
   }
 }

@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {ɵgetDOM as getDOM} from '@angular/common';
@@ -54,7 +54,6 @@ export const COMPOSITION_BUFFER_MODE = new InjectionToken<boolean>(
  * elements. The accessor is used by the `FormControlDirective`, `FormControlName`, and
  * `NgModel` directives.
  *
- * {@searchKeywords ngDefaultControl}
  *
  * @usageNotes
  *
@@ -97,6 +96,7 @@ export const COMPOSITION_BUFFER_MODE = new InjectionToken<boolean>(
     '(compositionend)': '$any(this)._compositionEnd($event.target.value)',
   },
   providers: [DEFAULT_VALUE_ACCESSOR],
+  standalone: false,
 })
 export class DefaultValueAccessor extends BaseControlValueAccessor implements ControlValueAccessor {
   /** Whether the user is creating a composition string (IME events). */

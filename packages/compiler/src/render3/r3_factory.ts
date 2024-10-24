@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 import {InjectFlags} from '../core';
 import * as o from '../output/output_ast';
@@ -111,7 +111,7 @@ export interface R3DependencyMetadata {
  * Construct a factory function expression for the given `R3FactoryMetadata`.
  */
 export function compileFactoryFunction(meta: R3FactoryMetadata): R3CompiledExpression {
-  const t = o.variable('ɵt');
+  const t = o.variable('__ngFactoryType__');
   let baseFactoryVar: o.ReadVarExpr | null = null;
 
   // The type to instantiate via constructor invocation. If there is no delegated factory, meaning
@@ -139,7 +139,7 @@ export function compileFactoryFunction(meta: R3FactoryMetadata): R3CompiledExpre
   let retExpr: o.Expression | null = null;
 
   function makeConditionalFactory(nonCtorExpr: o.Expression): o.ReadVarExpr {
-    const r = o.variable('ɵr');
+    const r = o.variable('__ngConditionalFactory__');
     body.push(r.set(o.NULL_EXPR).toDeclStmt());
     const ctorStmt =
       ctorExpr !== null

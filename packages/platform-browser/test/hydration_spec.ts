@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {DOCUMENT} from '@angular/common';
@@ -24,7 +24,11 @@ import {provideClientHydration, withNoHttpTransferCache} from '../public_api';
 import {withHttpTransferCacheOptions} from '../src/hydration';
 
 describe('provideClientHydration', () => {
-  @Component({selector: 'test-hydrate-app', template: ''})
+  @Component({
+    selector: 'test-hydrate-app',
+    template: '',
+    standalone: false,
+  })
   class SomeComponent {}
 
   function makeRequestAndExpectOne(

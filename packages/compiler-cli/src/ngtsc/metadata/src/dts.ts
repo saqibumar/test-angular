@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import ts from 'typescript';
@@ -139,6 +139,8 @@ export class DtsMetadataReader implements MetadataReader {
     const ngContentSelectors =
       def.type.typeArguments.length > 6 ? readStringArrayType(def.type.typeArguments[6]) : null;
 
+    // Note: the default value is still `false` here, because only legacy .d.ts files written before
+    // we had so many arguments use this default.
     const isStandalone =
       def.type.typeArguments.length > 7 && (readBooleanType(def.type.typeArguments[7]) ?? false);
 
@@ -181,6 +183,7 @@ export class DtsMetadataReader implements MetadataReader {
       // Imports are tracked in metadata only for template type-checking purposes,
       // so standalone components from .d.ts files don't have any.
       imports: null,
+      rawImports: null,
       deferredImports: null,
       // The same goes for schemas.
       schemas: null,

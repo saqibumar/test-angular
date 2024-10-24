@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {
@@ -79,7 +79,11 @@ const controlNameBinding: Provider = {
  * @ngModule ReactiveFormsModule
  * @publicApi
  */
-@Directive({selector: '[formControlName]', providers: [controlNameBinding]})
+@Directive({
+  selector: '[formControlName]',
+  providers: [controlNameBinding],
+  standalone: false,
+})
 export class FormControlName extends NgControl implements OnChanges, OnDestroy {
   private _added = false;
   /**

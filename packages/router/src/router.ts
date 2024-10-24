@@ -3,7 +3,7 @@
  * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
- * found in the LICENSE file at https://angular.io/license
+ * found in the LICENSE file at https://angular.dev/license
  */
 
 import {Location} from '@angular/common';
@@ -141,15 +141,6 @@ export class Router {
   get routerState() {
     return this.stateManager.getRouterState();
   }
-
-  /**
-   * A handler for navigation errors in this NgModule.
-   *
-   * @deprecated Subscribe to the `Router` events and watch for `NavigationError` instead.
-   *   `provideRouter` has the `withNavigationErrorHandler` feature to make this easier.
-   * @see {@link withNavigationErrorHandler}
-   */
-  errorHandler: (error: any) => any = this.options.errorHandler || defaultErrorHandler;
 
   /**
    * True if at least one navigation event has occurred,
@@ -452,7 +443,7 @@ export class Router {
       navigationExtras;
     const f = preserveFragment ? this.currentUrlTree.fragment : fragment;
     let q: Params | null = null;
-    switch (queryParamsHandling) {
+    switch (queryParamsHandling ?? this.options.defaultQueryParamsHandling) {
       case 'merge':
         q = {...this.currentUrlTree.queryParams, ...queryParams};
         break;
