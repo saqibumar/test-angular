@@ -164,9 +164,12 @@ export class ComponentNgElementStrategy implements NgElementStrategy {
   private getElementAttachPoint(): { parent: HTMLElement, viewNode: HTMLElement, beforeOf: ChildNode } | undefined {
     const hostView = this.componentRef!.hostView as EmbeddedViewRef<unknown>;
     const viewNode = hostView?.rootNodes?.[0] as HTMLElement;
-    const parent = viewNode?.parentElement!;
-    const index = parent && Array.from(parent.childNodes).indexOf(viewNode);
-    const beforeOf = parent && parent.childNodes.item(index + 1);
+    const parent = viewNode?.parentElement;
+    if (!parent) {
+      return;
+    }
+    const index = Array.from(parent.childNodes).indexOf(viewNode);
+    const beforeOf = parent.childNodes.item(index + 1);
     return { parent, viewNode, beforeOf };
   }
 
