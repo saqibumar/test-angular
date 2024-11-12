@@ -58,7 +58,6 @@ export class ReferenceScrollHandler implements OnDestroy {
     }
 
     this.setupCodeToCListeners(tocSelector);
-    this.setupMemberCardListeners();
     this.setScrollEventHandlers();
     this.listenToResizeCardContainer();
     this.setupFragmentChangeListener();
@@ -118,27 +117,6 @@ export class ReferenceScrollHandler implements OnDestroy {
           this.router.navigate([], {fragment: memberId, replaceUrl: true});
         }
       });
-  }
-
-  private setupMemberCardListeners(): void {
-    this.getAllMemberCards().forEach((card) => {
-      this.cardOffsetTop.set(card.id, card.offsetTop);
-      const header = card.querySelector('header');
-
-      if (!header) {
-        return;
-      }
-      fromEvent(header, 'click')
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((event) => {
-          const target = event.target as HTMLElement;
-          if (target instanceof HTMLAnchorElement) {
-            return;
-          }
-
-          this.router.navigate([], {fragment: card.id, replaceUrl: true});
-        });
-    });
   }
 
   private setScrollEventHandlers(): void {

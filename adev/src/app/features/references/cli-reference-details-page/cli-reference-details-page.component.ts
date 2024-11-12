@@ -45,7 +45,6 @@ export default class CliReferenceDetailsPage implements OnInit {
 
   cardsInnerHtml = signal<string>('');
   mainContentInnerHtml = signal<string>('');
-  membersMarginTopInPx = this.scrollHandler.membersMarginTopInPx;
 
   ngOnInit(): void {
     this.setPageContent();

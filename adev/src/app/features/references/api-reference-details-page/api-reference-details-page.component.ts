@@ -52,7 +52,6 @@ export default class ApiReferenceDetailsPage {
 
   // aliases
   ApiItemType = ApiItemType;
-  membersMarginTopInPx = this.scrollHandler.membersMarginTopInPx;
 
   // computed state
   parsedDocContent = computed(() => {
