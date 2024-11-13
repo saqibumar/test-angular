@@ -9,8 +9,8 @@
 import {DOCUMENT, isPlatformBrowser} from '@angular/common';
 import {
   DestroyRef,
-  EnvironmentInjector,
   Injectable,
+  Injector,
   OnDestroy,
   PLATFORM_ID,
   afterNextRender,
@@ -37,7 +37,7 @@ export const SCROLL_THRESHOLD = 20;
 export class ReferenceScrollHandler implements OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
-  private readonly injector = inject(EnvironmentInjector);
+  private readonly injector = inject(Injector);
   private readonly window = inject(WINDOW);
   private readonly router = inject(Router);
   private readonly appScroller = inject(AppScroller);
