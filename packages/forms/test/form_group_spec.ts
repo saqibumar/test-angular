@@ -81,6 +81,68 @@ import {StatusChangeEvent} from '../src/model/abstract_model';
       });
     });
 
+    describe('markAllAsDirty', () => {
+      it('should mark all descendants as dirty', () => {
+        const formGroup: FormGroup = new FormGroup({
+          'c1': new FormControl('v1'),
+          'group': new FormGroup({'c2': new FormControl('v2'), 'c3': new FormControl('v3')}),
+          'array': new FormArray([
+            new FormControl('v4') as any,
+            new FormControl('v5'),
+            new FormGroup({'c4': new FormControl('v4')}),
+          ]),
+        });
+
+        expect(formGroup.dirty).toBe(false);
+
+        const control1 = formGroup.get('c1') as FormControl;
+
+        expect(control1.dirty).toBe(false);
+
+        const innerGroup = formGroup.get('group') as FormGroup;
+
+        expect(innerGroup.dirty).toBe(false);
+
+        const innerGroupFirstChildCtrl = innerGroup.get('c2') as FormControl;
+
+        expect(innerGroupFirstChildCtrl.dirty).toBe(false);
+
+        formGroup.markAllAsDirty();
+
+        expect(formGroup.dirty).toBe(true);
+
+        expect(control1.dirty).toBe(true);
+
+        expect(innerGroup.dirty).toBe(true);
+
+        expect(innerGroupFirstChildCtrl.dirty).toBe(true);
+
+        const innerGroupSecondChildCtrl = innerGroup.get('c3') as FormControl;
+
+        expect(innerGroupSecondChildCtrl.dirty).toBe(true);
+
+        const array = formGroup.get('array') as FormArray;
+
+        expect(array.dirty).toBe(true);
+
+        const arrayFirstChildCtrl = array.at(0) as FormControl;
+
+        expect(arrayFirstChildCtrl.dirty).toBe(true);
+
+        const arraySecondChildCtrl = array.at(1) as FormControl;
+
+        expect(arraySecondChildCtrl.dirty).toBe(true);
+
+        const arrayFirstChildGroup = array.at(2) as FormGroup;
+
+        expect(arrayFirstChildGroup.dirty).toBe(true);
+
+        const arrayFirstChildGroupFirstChildCtrl = arrayFirstChildGroup.get('c4') as FormControl;
+
+        expect(arrayFirstChildGroupFirstChildCtrl.dirty).toBe(true);
+      });
+    });
+
     describe('markAllAsTouched', () => {
       it('should mark all descendants as touched', () => {
         const formGroup: FormGroup = new FormGroup({
