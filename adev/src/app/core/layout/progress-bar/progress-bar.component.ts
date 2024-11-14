@@ -12,7 +12,7 @@ import {
   inject,
   OnInit,
   PLATFORM_ID,
-  ViewChild,
+  viewChild,
 } from '@angular/core';
 import {isPlatformBrowser} from '@angular/common';
 import {NgProgressbar} from 'ngx-progressbar';
@@ -41,7 +41,7 @@ export const PROGRESS_BAR_DELAY = 30;
 export class ProgressBarComponent implements OnInit {
   private readonly router = inject(Router);
 
-  @ViewChild(NgProgressbar, {static: true}) progressBar!: NgProgressbar;
+  readonly progressBar = viewChild.required(NgProgressbar);
 
   isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -62,7 +62,7 @@ export class ProgressBarComponent implements OnInit {
         map(() => {
           // Only apply set the property if the navigation is not "immediate"
           return setTimeout(() => {
-            this.progressBar.start();
+            this.progressBar().start();
           }, PROGRESS_BAR_DELAY);
         }),
         switchMap((timeoutId) => {
@@ -83,7 +83,7 @@ export class ProgressBarComponent implements OnInit {
       .subscribe((timeoutId) => {
         // When the navigation finishes, prevent the navigating class from being applied in the timeout.
         clearTimeout(timeoutId);
-        this.progressBar.complete();
+        this.progressBar().complete();
       });
   }
 }

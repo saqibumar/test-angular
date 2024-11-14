@@ -17,10 +17,10 @@ import {
   OnDestroy,
   OnInit,
   PLATFORM_ID,
-  ViewChild,
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import {takeUntilDestroyed, toObservable} from '@angular/core/rxjs-interop';
 import {IconComponent} from '@angular/docs';
@@ -54,8 +54,8 @@ export const LARGE_EDITOR_HEIGHT_BREAKPOINT = 550;
   providers: [EditorUiState],
 })
 export class EmbeddedEditor implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('editorContainer') editorContainer!: ElementRef<HTMLDivElement>;
-  @ViewChild(MatTabGroup) matTabGroup!: MatTabGroup;
+  readonly editorContainer = viewChild.required<ElementRef<HTMLDivElement>>('editorContainer');
+  readonly matTabGroup = viewChild(MatTabGroup);
 
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
@@ -121,7 +121,10 @@ export class EmbeddedEditor implements OnInit, AfterViewInit, OnDestroy {
   private setFirstTabAsActiveAfterResize(): void {
     this.displayPreviewInMatTabGroup$.subscribe(() => {
       this.changeDetector.detectChanges();
-      this.matTabGroup.selectedIndex = 0;
+      const matTabGroup = this.matTabGroup();
+      if (matTabGroup) {
+        matTabGroup.selectedIndex = 0;
+      }
     });
   }
 
@@ -139,11 +142,11 @@ export class EmbeddedEditor implements OnInit, AfterViewInit, OnDestroy {
       this.splitDirection = this.isLargeEmbeddedEditor() ? 'horizontal' : 'vertical';
     });
 
-    this.resizeObserver.observe(this.editorContainer.nativeElement);
+    this.resizeObserver.observe(this.editorContainer().nativeElement);
   }
 
   private isLargeEmbeddedEditor(): boolean {
-    const editorContainer = this.editorContainer.nativeElement;
+    const editorContainer = this.editorContainer().nativeElement;
     const width = editorContainer.offsetWidth;
     const height = editorContainer.offsetHeight;
 
