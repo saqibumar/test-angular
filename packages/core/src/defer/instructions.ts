@@ -59,9 +59,7 @@ import {
   scheduleDelayedHydrating,
   scheduleDelayedPrefetching,
   scheduleDelayedTrigger,
-  shouldActivateHydrateTrigger,
   shouldTriggerDeferBlock,
-  shouldTriggerWhenOnClient,
   triggerDeferBlock,
   triggerPrefetching,
   triggerResourceLoading,
@@ -183,14 +181,16 @@ export function ɵɵdefer(
  */
 export function ɵɵdeferWhen(rawValue: unknown) {
   const lView = getLView();
+  const tNode = getSelectedTNode();
+
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
+
   const bindingIndex = nextBindingIndex();
   if (bindingUpdated(lView, bindingIndex, rawValue)) {
     const prevConsumer = setActiveConsumer(null);
     try {
       const value = Boolean(rawValue); // handle truthy or falsy values
-      const tNode = getSelectedTNode();
       const lDetails = getLDeferBlockDetails(lView, tNode);
-      const tDetails = getTDeferBlockDetails(lView[TVIEW], tNode);
       const renderedState = lDetails[DEFER_BLOCK_STATE];
       if (value === false && renderedState === DeferBlockInternalState.Initial) {
         // If nothing is rendered yet, render a placeholder (if defined).
@@ -199,7 +199,7 @@ export function ɵɵdeferWhen(rawValue: unknown) {
         value === true &&
         (renderedState === DeferBlockInternalState.Initial ||
           renderedState === DeferBlockState.Placeholder) &&
-        shouldTriggerWhenOnClient(lView[INJECTOR]!, lDetails, tDetails)
+        !(typeof ngServerMode !== 'undefined' && ngServerMode)
       ) {
         triggerDeferBlock(lView, tNode);
       }
@@ -245,9 +245,7 @@ export function ɵɵdeferHydrateWhen(rawValue: unknown) {
   const lView = getLView();
   const tNode = getSelectedTNode();
 
-  if (!shouldActivateHydrateTrigger(lView, tNode)) {
-    return;
-  }
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
   // TODO(incremental-hydration): audit all defer instructions to reduce unnecessary work by
   // moving function calls inside their relevant control flow blocks
@@ -288,14 +286,14 @@ export function ɵɵdeferHydrateWhen(rawValue: unknown) {
 export function ɵɵdeferHydrateNever() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Never, null);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      // We are on the server and SSR for defer blocks is enabled.
-      triggerDeferBlock(lView, tNode);
-    }
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Never, null);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // We are on the server and SSR for defer blocks is enabled.
+    triggerDeferBlock(lView, tNode);
   }
 }
 
@@ -304,6 +302,7 @@ export function ɵɵdeferHydrateNever() {
  * @codeGenApi
  */
 export function ɵɵdeferOnIdle() {
+  if (!shouldTriggerDeferBlock(getLView(), getCurrentTNode()!)) return;
   scheduleDelayedTrigger(onIdle);
 }
 
@@ -322,16 +321,16 @@ export function ɵɵdeferPrefetchOnIdle() {
 export function ɵɵdeferHydrateOnIdle() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Idle, null);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      // We are on the server and SSR for defer blocks is enabled.
-      triggerDeferBlock(lView, tNode);
-    } else {
-      scheduleDelayedHydrating(onIdle, lView, tNode);
-    }
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Idle, null);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // We are on the server and SSR for defer blocks is enabled.
+    triggerDeferBlock(lView, tNode);
+  } else {
+    scheduleDelayedHydrating(onIdle, lView, tNode);
   }
 }
 
@@ -342,19 +341,14 @@ export function ɵɵdeferHydrateOnIdle() {
 export function ɵɵdeferOnImmediate() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  const tView = lView[TVIEW];
-  const injector = lView[INJECTOR]!;
-  const tDetails = getTDeferBlockDetails(tView, tNode);
-  const lDetails = getLDeferBlockDetails(lView, tNode);
 
   // Render placeholder block only if loading template is not present and we're on
   // the client to avoid content flickering, since it would be immediately replaced
   // by the loading block.
-  if (!shouldTriggerDeferBlock(injector, tDetails) || tDetails.loadingTmplIndex === null) {
-    renderPlaceholder(lView, tNode);
-  }
-  if (shouldTriggerWhenOnClient(injector, lDetails, tDetails)) {
+  if (shouldTriggerDeferBlock(lView, tNode)) {
     triggerDeferBlock(lView, tNode);
+  } else {
+    renderPlaceholder(lView, tNode);
   }
 }
 
@@ -382,19 +376,19 @@ export function ɵɵdeferPrefetchOnImmediate() {
 export function ɵɵdeferHydrateOnImmediate() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const injector = lView[INJECTOR]!;
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Immediate, null);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      triggerDeferBlock(lView, tNode);
-    } else {
-      const lDetails = getLDeferBlockDetails(lView, tNode);
-      const ssrUniqueId = lDetails[SSR_UNIQUE_ID]!;
-      ngDevMode && assertSsrIdDefined(ssrUniqueId);
-      triggerHydrationFromBlockName(injector, ssrUniqueId);
-    }
+  const injector = lView[INJECTOR]!;
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Immediate, null);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    triggerDeferBlock(lView, tNode);
+  } else {
+    const lDetails = getLDeferBlockDetails(lView, tNode);
+    const ssrUniqueId = lDetails[SSR_UNIQUE_ID]!;
+    ngDevMode && assertSsrIdDefined(ssrUniqueId);
+    triggerHydrationFromBlockName(injector, ssrUniqueId);
   }
 }
 /**
@@ -403,6 +397,7 @@ export function ɵɵdeferHydrateOnImmediate() {
  * @codeGenApi
  */
 export function ɵɵdeferOnTimer(delay: number) {
+  if (!shouldTriggerDeferBlock(getLView(), getCurrentTNode()!)) return;
   scheduleDelayedTrigger(onTimer(delay));
 }
 
@@ -423,16 +418,16 @@ export function ɵɵdeferPrefetchOnTimer(delay: number) {
 export function ɵɵdeferHydrateOnTimer(delay: number) {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Timer, delay);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      // We are on the server and SSR for defer blocks is enabled.
-      triggerDeferBlock(lView, tNode);
-    } else {
-      scheduleDelayedHydrating(onTimer(delay), lView, tNode);
-    }
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Timer, delay);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // We are on the server and SSR for defer blocks is enabled.
+    triggerDeferBlock(lView, tNode);
+  } else {
+    scheduleDelayedHydrating(onTimer(delay), lView, tNode);
   }
 }
 
@@ -445,10 +440,10 @@ export function ɵɵdeferHydrateOnTimer(delay: number) {
 export function ɵɵdeferOnHover(triggerIndex: number, walkUpTimes?: number) {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  const lDetails = getLDeferBlockDetails(lView, tNode);
-  const tDetails = getTDeferBlockDetails(lView[TVIEW], tNode);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
+
   renderPlaceholder(lView, tNode);
-  if (shouldTriggerWhenOnClient(lView[INJECTOR]!, lDetails, tDetails)) {
+  if (!(typeof ngServerMode !== 'undefined' && ngServerMode)) {
     registerDomTrigger(
       lView,
       tNode,
@@ -495,14 +490,14 @@ export function ɵɵdeferPrefetchOnHover(triggerIndex: number, walkUpTimes?: num
 export function ɵɵdeferHydrateOnHover() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Hover, null);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      // We are on the server and SSR for defer blocks is enabled.
-      triggerDeferBlock(lView, tNode);
-    }
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Hover, null);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // We are on the server and SSR for defer blocks is enabled.
+    triggerDeferBlock(lView, tNode);
   }
   // The actual triggering of hydration on hover is handled by JSAction in
   // event_replay.ts.
@@ -517,10 +512,10 @@ export function ɵɵdeferHydrateOnHover() {
 export function ɵɵdeferOnInteraction(triggerIndex: number, walkUpTimes?: number) {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  const lDetails = getLDeferBlockDetails(lView, tNode);
-  const tDetails = getTDeferBlockDetails(lView[TVIEW], tNode);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
+
   renderPlaceholder(lView, tNode);
-  if (shouldTriggerWhenOnClient(lView[INJECTOR]!, lDetails, tDetails)) {
+  if (!(typeof ngServerMode !== 'undefined' && ngServerMode)) {
     registerDomTrigger(
       lView,
       tNode,
@@ -567,14 +562,14 @@ export function ɵɵdeferPrefetchOnInteraction(triggerIndex: number, walkUpTimes
 export function ɵɵdeferHydrateOnInteraction() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Interaction, null);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      // We are on the server and SSR for defer blocks is enabled.
-      triggerDeferBlock(lView, tNode);
-    }
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Interaction, null);
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // We are on the server and SSR for defer blocks is enabled.
+    triggerDeferBlock(lView, tNode);
   }
   // The actual triggering of hydration on interaction is handled by JSAction in
   // event_replay.ts.
@@ -589,10 +584,10 @@ export function ɵɵdeferHydrateOnInteraction() {
 export function ɵɵdeferOnViewport(triggerIndex: number, walkUpTimes?: number) {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  const lDetails = getLDeferBlockDetails(lView, tNode);
-  const tDetails = getTDeferBlockDetails(lView[TVIEW], tNode);
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
+
   renderPlaceholder(lView, tNode);
-  if (shouldTriggerWhenOnClient(lView[INJECTOR]!, lDetails, tDetails)) {
+  if (!(typeof ngServerMode !== 'undefined' && ngServerMode)) {
     registerDomTrigger(
       lView,
       tNode,
@@ -639,15 +634,15 @@ export function ɵɵdeferPrefetchOnViewport(triggerIndex: number, walkUpTimes?: 
 export function ɵɵdeferHydrateOnViewport() {
   const lView = getLView();
   const tNode = getCurrentTNode()!;
-  if (shouldActivateHydrateTrigger(lView, tNode)) {
-    const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
-    hydrateTriggers.set(DeferBlockTrigger.Viewport, null);
-    const injector = lView[INJECTOR]!;
+  if (!shouldTriggerDeferBlock(lView, tNode)) return;
 
-    if (typeof ngServerMode !== 'undefined' && ngServerMode) {
-      // We are on the server and SSR for defer blocks is enabled.
-      triggerDeferBlock(lView, tNode);
-    }
+  const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
+  hydrateTriggers.set(DeferBlockTrigger.Viewport, null);
+  const injector = lView[INJECTOR]!;
+
+  if (typeof ngServerMode !== 'undefined' && ngServerMode) {
+    // We are on the server and SSR for defer blocks is enabled.
+    triggerDeferBlock(lView, tNode);
   }
   // The actual triggering of hydration on viewport happens in incremental.ts,
   // since these instructions won't exist for dehydrated content.

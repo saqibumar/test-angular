@@ -1236,6 +1236,93 @@ describe('platform-server partial hydration integration', () => {
       expect(appHostNode.outerHTML).toContain('<span id="test">end</span>');
     });
 
+    xit('when', async () => {
+      @Component({
+        standalone: true,
+        selector: 'app',
+        template: `
+          <main (click)="fnA()">
+            @defer (on immediate; hydrate when iSaySo()) {
+              <article>
+                defer block rendered!
+                <span id="test" (click)="fnB()">{{value()}}</span>
+              </article>
+            } @placeholder {
+              <span>Outer block placeholder</span>
+            }
+            <button id="hydrate-me" (click)="triggerHydration()">Click Here</button>
+          </main>
+        `,
+      })
+      class SimpleComponent {
+        value = signal('start');
+        iSaySo = signal(false);
+        fnA() {}
+        triggerHydration() {
+          this.iSaySo.set(true);
+        }
+        fnB() {
+          this.value.set('end');
+        }
+        registry = inject(DEHYDRATED_BLOCK_REGISTRY);
+      }
+
+      const appId = 'custom-app-id';
+      const providers = [{provide: APP_ID, useValue: appId}];
+      const hydrationFeatures = () => [withIncrementalHydration()];
+
+      const html = await ssr(SimpleComponent, {envProviders: providers, hydrationFeatures});
+      const ssrContents = getAppContents(html);
+
+      // <main> uses "eager" `custom-app-id` namespace.
+      expect(ssrContents).toContain('<main jsaction="click:;');
+      // <div>s inside a defer block have `d0` as a namespace.
+      expect(ssrContents).toContain('<article>');
+      // Outer defer block is rendered.
+      expect(ssrContents).toContain('defer block rendered');
+
+      // Internal cleanup before we do server->client transition in this test.
+      resetTViewsFor(SimpleComponent);
+
+      ////////////////////////////////
+      const doc = getDocument();
+      const appRef = await prepareEnvironmentAndHydrate(doc, html, SimpleComponent, {
+        envProviders: [...providers],
+        hydrationFeatures,
+      });
+      const compRef = getComponentRef<SimpleComponent>(appRef);
+      const registry = compRef.instance.registry;
+      spyOn(registry, 'cleanup').and.callThrough();
+      appRef.tick();
+      await whenStable(appRef);
+
+      const appHostNode = compRef.location.nativeElement;
+
+      const article = appHostNode.querySelector('article');
+
+      expect(article.__ngDebugHydrationInfo__).toBeUndefined();
+
+      expect(appHostNode.outerHTML).toContain(
+        '<span id="test" jsaction="click:;" ngb="d0">start</span>',
+      );
+      expect(registry.has('d0')).toBeTruthy();
+
+      const testElement = doc.getElementById('hydrate-me')!;
+      const clickEvent = new CustomEvent('click');
+      testElement.dispatchEvent(clickEvent);
+
+      await timeout(1000); // wait for defer blocks to resolve
+      appRef.tick();
+
+      await whenStable(appRef);
+
+      expect(article.__ngDebugHydrationInfo__).toBeDefined();
+      expect(registry.cleanup).toHaveBeenCalledTimes(1);
+
+      expect(registry.has('d0')).toBeFalsy();
+      expect(appHostNode.outerHTML).toContain('<span id="test">start</span>');
+    }, 100000);
+
     it('never', async () => {
       @Component({
         standalone: true,
@@ -1445,7 +1532,7 @@ describe('platform-server partial hydration integration', () => {
         selector: 'app',
         template: `
           <main (click)="fnA()">
-            @defer (hydrate when true) {
+            @defer (hydrate on interaction) {
               <article>
                 defer block rendered!
                 <span id="test" (click)="fnB()">{{value()}}</span>
