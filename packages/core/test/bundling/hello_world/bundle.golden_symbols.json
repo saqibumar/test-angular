@@ -867,6 +867,9 @@
     "name": "refreshView"
   },
   {
+    "name": "registerAfterRendersInView"
+  },
+  {
     "name": "rememberChangeHistoryAndInvokeOnChangesHook"
   },
   {

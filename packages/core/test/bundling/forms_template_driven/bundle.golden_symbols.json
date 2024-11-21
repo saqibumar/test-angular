@@ -1629,6 +1629,9 @@
     "name": "refreshView"
   },
   {
+    "name": "registerAfterRendersInView"
+  },
+  {
     "name": "registerDestroyHooksIfSupported"
   },
   {
