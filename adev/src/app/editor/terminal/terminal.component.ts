@@ -13,9 +13,9 @@ import {
   DestroyRef,
   ElementRef,
   Input,
-  ViewChild,
   ViewEncapsulation,
   inject,
+  viewChild,
 } from '@angular/core';
 
 import {debounceTime} from 'rxjs/operators';
@@ -36,7 +36,7 @@ import {Subject} from 'rxjs';
 })
 export class Terminal implements AfterViewInit {
   @Input({required: true}) type!: TerminalType;
-  @ViewChild('terminalOutput') private terminalElementRef!: ElementRef<HTMLElement>;
+  readonly terminalElementRef = viewChild.required<ElementRef<HTMLElement>>('terminalOutput');
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly terminalHandler = inject(TerminalHandler);
@@ -44,7 +44,7 @@ export class Terminal implements AfterViewInit {
   private readonly resize$ = new Subject<void>();
 
   ngAfterViewInit() {
-    this.terminalHandler.registerTerminal(this.type, this.terminalElementRef.nativeElement);
+    this.terminalHandler.registerTerminal(this.type, this.terminalElementRef().nativeElement);
 
     this.setResizeObserver();
 
@@ -58,7 +58,7 @@ export class Terminal implements AfterViewInit {
       this.resize$.next();
     });
 
-    resizeObserver.observe(this.terminalElementRef.nativeElement);
+    resizeObserver.observe(this.terminalElementRef().nativeElement);
 
     this.destroyRef.onDestroy(() => resizeObserver.disconnect());
   }

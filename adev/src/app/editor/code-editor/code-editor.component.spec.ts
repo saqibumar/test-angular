@@ -98,7 +98,7 @@ describe('CodeEditor', () => {
     component.ngAfterViewInit();
 
     expect(codeMirrorEditorInitSpy).toHaveBeenCalledWith(
-      component['codeEditorWrapperRef'].nativeElement,
+      component.codeEditorWrapperRef().nativeElement,
     );
   });
 

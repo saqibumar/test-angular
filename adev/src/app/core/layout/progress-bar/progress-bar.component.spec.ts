@@ -26,7 +26,7 @@ describe('ProgressBarComponent', () => {
   });
 
   it('should call progressBar.complete() on route change', async () => {
-    const progressBarCompleteSpy = spyOn(component.progressBar, 'complete');
+    const progressBarCompleteSpy = spyOn(component.progressBar(), 'complete');
 
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/');
