@@ -95,6 +95,6 @@ describe('DevtoolsTabsComponent', () => {
     spyOn(comp.frameSelected, 'emit');
     comp.emitSelectedFrame('1');
 
-    expect(comp.frameSelected.emit).toHaveBeenCalledWith(comp.frameManager.frames[0]);
+    expect(comp.frameSelected.emit).toHaveBeenCalledWith(comp.frameManager.frames()[0]);
   });
 });
