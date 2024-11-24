@@ -39,6 +39,16 @@
     }
   }
 
+  // remove cards container from the CLI ref page if it has no card members
+  .adev-cli-members-container:not(:has(.docs-reference-member-card)) {
+    display: none;
+  }
+  // let the tabs take the full width in the CLI ref page if it has no card members
+  .adev-header-and-tabs:not(:has(.adev-cli-members-container .docs-reference-member-card)){
+    width:100%; 
+    padding: var(--layout-padding);
+  }
+
   .adev-ref-option-and-description {
     flex-grow: 1;
     max-width: calc(100% - 80px);
