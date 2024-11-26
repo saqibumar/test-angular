@@ -1,4 +1,5 @@
-<div class="adev-header-and-tabs docs-scroll-track-transparent">
+<div class="adev-header-and-tabs docs-scroll-track-transparent"    
+[class.tabs-with-hidden-aside-cards]= "!parsedDocContent().members ||  membersMarginTopInPx() < 0">
   <docs-viewer [docContent]="parsedDocContent().header" class="docs-reference-header"></docs-viewer>
 
   <mat-tab-group class="docs-reference-tabs" animationDuration="0ms" mat-stretch-tabs="false" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="tabChange($event)">
