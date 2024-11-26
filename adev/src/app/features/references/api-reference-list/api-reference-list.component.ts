@@ -16,7 +16,7 @@ import {
   model,
   signal,
   viewChild,
-  afterRenderEffect,
+  afterNextRender,
 } from '@angular/core';
 import ApiItemsSection from '../api-items-section/api-items-section.component';
 import {FormsModule} from '@angular/forms';
@@ -57,14 +57,14 @@ export default class ApiReferenceList {
   filterInput = viewChild.required(TextField, {read: ElementRef});
 
   constructor() {
-    afterRenderEffect({
-      write: () => {
-        // Lord forgive me for I have sinned
-        // Use the CVA to focus when https://github.com/angular/angular/issues/31133 is implemented
-        if (matchMedia('(hover: hover) and (pointer:fine)').matches) {
+    afterNextRender(() => {
+      // Lord forgive me for I have sinned
+      // Use the CVA to focus when https://github.com/angular/angular/issues/31133 is implemented
+      if (matchMedia('(hover: hover) and (pointer:fine)').matches) {
+        requestIdleCallback(() => {
           this.filterInput().nativeElement.querySelector('input').focus();
-        }
-      },
+        });
+      }
     });
 
     effect(() => {
