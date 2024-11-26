@@ -56,14 +56,19 @@ export class DevToolsTabsComponent {
   readonly activeTab = signal<Tabs>('Components');
   readonly inspectorRunning = signal(false);
   readonly showCommentNodes = signal(false);
+  readonly routerGraphEnabled = signal(false);
   readonly timingAPIEnabled = signal(false);
 
   readonly routes = signal<Route[]>([]);
   readonly frameManager = inject(FrameManager);
 
+  readonly snapToRoot = signal(false);
+
   readonly tabs = computed<Tabs[]>(() => {
     const alwaysShown: Tabs[] = ['Components', 'Profiler', 'Injector Tree'];
-    return this.routes().length === 0 ? alwaysShown : [...alwaysShown, 'Router Tree'];
+    return this.routerGraphEnabled() && this.routes().length > 0
+      ? [...alwaysShown, 'Router Tree']
+      : alwaysShown;
   });
 
   profilingNotificationsSupported = Boolean(
@@ -106,6 +111,7 @@ export class DevToolsTabsComponent {
     this.tabUpdate.notify(tab);
     if (tab === 'Router Tree') {
       this._messageBus.emit('getRoutes');
+      this.snapToRoot.set(true);
     }
   }
 
@@ -132,5 +138,12 @@ export class DevToolsTabsComponent {
     this.timingAPIEnabled()
       ? this._messageBus.emit('enableTimingAPI')
       : this._messageBus.emit('disableTimingAPI');
+  }
+
+  protected setRouterGraph(enabled: boolean): void {
+    this.routerGraphEnabled.set(enabled);
+    if (!enabled) {
+      this.activeTab.set('Components');
+    }
   }
 }
